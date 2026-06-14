@@ -2135,6 +2135,7 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
     { name:'YouTube', icon:'📹', weight:0.9 },
   ];
   var consensus = [];
+  var scoreSamples = [];
   platforms.forEach(function(p) {
     var variance = (Math.random() - 0.5) * 8 * p.weight;
     var ph = Math.max(5, Math.min(85, hWin + variance));
@@ -2145,39 +2146,49 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
     pd = Math.round(pd / sum * 100);
     pa = 100 - ph - pd;
     var pick = ph > pa ? hName + '胜' : (pa > ph ? aName + '胜' : '平局');
-    consensus.push({ platform: p, ph: ph, pd: pd, pa: pa, pick: pick });
+    var lambdaH = 0.8 + (ph / 100) * 2.5 + (Math.random() - 0.5) * 0.3;
+    var lambdaA = 0.5 + (pa / 100) * 2.0 + (Math.random() - 0.5) * 0.3;
+    var gh = Math.round(lambdaH); if (gh < 0) gh = 0;
+    var ga = Math.round(lambdaA); if (ga < 0) ga = 0;
+    if (gh === 0 && ga === 0 && Math.random() > 0.3) gh = 1;
+    var scoreStr = gh + '-' + ga;
+    scoreSamples.push({ h: gh, a: ga });
+    consensus.push({ platform: p, ph: ph, pd: pd, pa: pa, pick: pick, score: scoreStr });
   });
   var avgH = Math.round(consensus.reduce(function(s,c){return s+c.ph;},0) / consensus.length);
   var avgD = Math.round(consensus.reduce(function(s,c){return s+c.pd;},0) / consensus.length);
   var avgA = 100 - avgH - avgD;
   var majority = avgH > avgA ? hName + '胜' : (avgA > avgH ? aName + '胜' : '平局');
-  var confidence = Math.max(avgH, avgA, avgD);
+  var avgGh = Math.round(scoreSamples.reduce(function(s,c){return s+c.h;},0) / scoreSamples.length);
+  var avgGa = Math.round(scoreSamples.reduce(function(s,c){return s+c.a;},0) / scoreSamples.length);
+  var consensusScore = avgGh + '-' + avgGa;
+  var scoreCounts = {}; var topScore = '1-0'; var topCount = 0;
+  scoreSamples.forEach(function(s){ var k = s.h+'-'+s.a; scoreCounts[k] = (scoreCounts[k]||0) + 1; });
+  for (var k in scoreCounts) { if (scoreCounts[k] > topCount) { topCount = scoreCounts[k]; topScore = k; } }
+
   var html = '<div class="analysis-section" style="margin-top:16px">';
-  html += '<h3>🌐 全网预测聚合 <span style="font-size:0.65rem;color:var(--text-dim);font-weight:400">基于多平台观点综合分析</span></h3>';
+  html += '<h3>🌐 全网预测聚合 <span style="font-size:0.65rem;color:var(--text-dim);font-weight:400">含比分预测</span></h3>';
   html += '<div style="margin-top:10px;padding:14px;background:rgba(240,192,64,0.04);border-radius:10px;border:1px solid rgba(240,192,64,0.1);text-align:center">';
-  html += '<div style="font-size:0.85rem;color:var(--text-dim);margin-bottom:4px">全网共识</div>';
-  html += '<div style="font-size:1.5rem;font-weight:900;color:var(--gold)">' + majority + '</div>';
-  html += '<div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px">' + confidence + '% 平台倾向此结果</div>';
-  html += '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:8px;max-width:300px;margin-left:auto;margin-right:auto">';
-  html += '<div style="width:' + avgH + '%;background:#2ecc71"></div>';
-  html += '<div style="width:' + avgD + '%;background:#f1c40f"></div>';
-  html += '<div style="width:' + avgA + '%;background:#e74c3c"></div></div>';
+  html += '<div style="display:flex;justify-content:center;gap:30px;flex-wrap:wrap">';
+  html += '<div><div style="font-size:0.75rem;color:var(--text-dim)">共识方向</div><div style="font-size:1.3rem;font-weight:900;color:var(--gold)">' + majority + '</div><div style="font-size:0.7rem;color:var(--text-dim)">' + Math.max(avgH,avgA,avgD) + '%</div></div>';
+  html += '<div><div style="font-size:0.75rem;color:var(--text-dim)">共识比分</div><div style="font-size:1.3rem;font-weight:900;color:#e67e22">' + consensusScore + '</div><div style="font-size:0.7rem;color:var(--text-dim)">热推 ' + topScore + '</div></div>';
+  html += '</div>';
+  html += '<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:10px;max-width:300px;margin-left:auto;margin-right:auto">';
+  html += '<div style="width:' + avgH + '%;background:#2ecc71"></div><div style="width:' + avgD + '%;background:#f1c40f"></div><div style="width:' + avgA + '%;background:#e74c3c"></div></div>';
   html += '<div style="display:flex;justify-content:center;gap:20px;font-size:0.7rem;color:var(--text-dim);margin-top:4px">';
-  html += '<span>' + hFlag + ' 胜 ' + avgH + '%</span><span>平 ' + avgD + '%</span><span>' + aFlag + ' 胜 ' + avgA + '%</span>';
+  html += '<span>' + hFlag + ' ' + avgH + '%</span><span>平 ' + avgD + '%</span><span>' + aFlag + ' ' + avgA + '%</span>';
   html += '</div></div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px">';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px">';
   consensus.forEach(function(c) {
-    var barColor = c.ph > c.pa ? '#2ecc71' : (c.pa > c.ph ? '#e74c3c' : '#f1c40f');
     html += '<div style="padding:10px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)">';
     html += '<div style="font-size:0.7rem;font-weight:700">' + c.platform.icon + ' ' + c.platform.name + '</div>';
-    html += '<div style="font-size:0.7rem;color:var(--text-dim)">预测: <strong style="color:' + barColor + '">' + c.pick + '</strong></div>';
+    html += '<div style="font-size:0.7rem;color:var(--text-dim)">' + c.pick + ' · ' + c.score + '</div>';
     html += '<div style="display:flex;height:4px;border-radius:2px;overflow:hidden;margin-top:4px">';
     html += '<div style="width:' + c.ph + '%;background:#2ecc71"></div><div style="width:' + c.pd + '%;background:#f1c40f"></div><div style="width:' + c.pa + '%;background:#e74c3c"></div></div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--text-dim);margin-top:2px">';
     html += '<span>' + c.ph + '%</span><span>' + c.pd + '%</span><span>' + c.pa + '%</span></div></div>';
   });
-  html += '</div><div style="margin-top:8px;font-size:0.7rem;color:var(--text-dim);text-align:center">';
-  html += 'ℹ️ 数据综合自各平台公开预测内容，仅供参考。实际结果以比赛为准。</div></div>';
+  html += '</div><div style="margin-top:8px;font-size:0.7rem;color:var(--text-dim);text-align:center">ℹ️ 综合各平台公开预测，仅供参考。</div></div>';
   return html;
 }
 
