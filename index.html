@@ -779,7 +779,17 @@ const teamDetails = {
 };
 
 function getTeamDetail(teamId) {
-  return teamDetails[teamId] || {star:'待定', starSt:'available', attack:6, defense:6, coach:'待定', style:'均衡', wcExp:5};
+  var t = teamDetails[teamId];
+  if (!t) return {star:'待定', starSt:'available', attack:6, defense:6, coach:'待定', style:'均衡', wcExp:5, inj:''};
+  return t;
+}
+
+// 球员出场影响计算（调整胜负概率）
+function playerImpact(homeId, awayId) {
+  var hd = getTeamDetail(homeId), ad = getTeamDetail(awayId);
+  var hAdj = hd.starSt === 'available' ? 0 : (hd.starSt === 'doubtful' ? -5 : -12);
+  var aAdj = ad.starSt === 'available' ? 0 : (ad.starSt === 'doubtful' ? -5 : -12);
+  return { homeAdj: hAdj, awayAdj: aAdj, hStar: hd.star, aStar: ad.star, hSt: hd.starSt, aSt: ad.starSt, hInj: hd.inj||'', aInj: ad.inj||'' };
 }
 
 // 生成综合因素分析HTML
@@ -912,6 +922,11 @@ function computeMatchProb(homeId, awayId, handicap = 0) {
   const formDiff = (hForm - aForm) * 1.2;
   baseHome += formDiff;
   baseAway -= formDiff;
+
+  // 主力球员出场影响（核心缺阵可能降低-12%胜率）
+  var pi = playerImpact(homeId, awayId);
+  baseHome += pi.homeAdj;
+  baseAway += pi.awayAdj;
 
   // Ensure positive
   baseHome = Math.max(15, baseHome);
