@@ -1744,7 +1744,13 @@ function renderHHGG(matchId) {
   if (combos3.length > 0) {
     html += '🥇 <strong>3串1首选</strong>：' + combos3[0].label + '（概率 ' + combos3[0].prob.toFixed(1) + '%，赔率 ' + combos3[0].odds + '）<br>';
   }
-  html += '<br><span style="color:var(--text-dim)">💡 以上基于各场最可能结果。2串1命中率高，3串1赔率更高。根据自身风险偏好选择。</span>';
+  if (scoreCombos2.length > 0) {
+    html += '🎯 <strong>比分2串1</strong>：' + scoreCombos2[0].m1.home.name + ' ' + scoreCombos2[0].m1.bestScore + ' + ' + scoreCombos2[0].m2.home.name + ' ' + scoreCombos2[0].m2.bestScore + '（概率 ' + scoreCombos2[0].prob.toFixed(1) + '%，赔率 ' + scoreCombos2[0].odds + '）<br>';
+  }
+  if (typeof scoreCombos3 !== 'undefined' && scoreCombos3.length > 0) {
+    html += '🎯 <strong>比分3串1</strong>：' + scoreCombos3[0].m1.home.name + ' ' + scoreCombos3[0].m1.bestScore + ' + ' + scoreCombos3[0].m2.home.name + ' ' + scoreCombos3[0].m2.bestScore + ' + ' + scoreCombos3[0].m3.home.name + ' ' + scoreCombos3[0].m3.bestScore + '（概率 ' + scoreCombos3[0].prob.toFixed(2) + '%，赔率 ' + scoreCombos3[0].odds + '）<br>';
+  }
+  html += '<br><span style="color:var(--text-dim)">💡 以上基于各场最可能结果。2串1命中率高，比分串赔率高适合博胆。根据自身风险偏好选择。</span>';
   html += '</div></div>';
 
   if (!isMatchFinished(matchId)) {
