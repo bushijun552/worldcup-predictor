@@ -117,9 +117,6 @@
     display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
     gap:10px; margin-bottom:16px;
   }
-  #matchSelector.match-selector {
-    display:block; grid-template-columns:none; gap:0;
-  }
   .match-card {
     padding:12px; border-radius:12px;
     background:var(--card-bg); border:2px solid transparent;
@@ -1133,48 +1130,40 @@ function renderAll() {
 function renderMatchSelector() {
   const container = document.getElementById('matchSelector');
   if (!container) return;
-  // Update hero stats
   var allPlayed = matchData.filter(function(x){return isMatchFinished(x.id);}).length;
   var todayMatches = matchData.filter(function(x){return x.date === '2026-06-14';}).length;
   document.getElementById('statPlayed').textContent = allPlayed;
   document.getElementById('statToday').textContent = todayMatches;
   document.getElementById('statUpcoming').textContent = matchData.length - allPlayed;
 
-  // 显示所有比赛
-  var allGroups = groupByDate(matchData);
-  var showGroups = allGroups;
-
-  var chipsHtml = '';
-
-  container.innerHTML = chipsHtml + showGroups.map(function(g) {
-    var rows = g.matches.map(function(m) {
+  var groups = groupByDate(matchData);
+  container.innerHTML = groups.map(function(g) {
+    var cards = g.matches.map(function(m) {
       var h = teamMap[m.home], a = teamMap[m.away];
       var finished = isMatchFinished(m.id);
       var r = getMatchResult(m.id);
       var selClass = m.id === currentMatchId ? ' selected' : '';
-      var resultColor = finished ? 'var(--gold)' : 'var(--text-dim)';
-      var resultText = finished ? r.desc : '';
-      var statusIcon = finished ? '<span class="fr-status" style="color:#2ecc71">✓</span>' : '<span class="fr-status" style="color:var(--text-dim);opacity:0.2">○</span>';
-      return '<div class="fixture-row' + selClass + '" onclick="selectMatch(\'' + m.id + '\')">'
-        + '<span class="fr-num">' + m.code.slice(-4) + '</span>'
-        + '<div class="fr-teams">'
-          + '<span class="flag">' + h.flag + '</span> ' + h.name
-          + '<span class="fr-vs">vs</span>'
-          + '<span class="flag">' + a.flag + '</span> ' + a.name
-        + '</div>'
-        + '<span class="fr-result" style="color:' + resultColor + '">' + resultText + '</span>'
-        + '<span class="fr-group">' + m.group + '</span>'
-        + statusIcon
+      var vsContent = finished
+        ? '<div class="vs" style="color:var(--gold);font-size:1rem">' + r.desc + '</div>'
+        : '<div class="vs">VS</div>';
+      var statusBadge = finished ? '<span class="finish-badge">✅ 已完赛</span>' : '';
+      return '<div class="match-card' + selClass + '" onclick="selectMatch(\'' + m.id + '\')">'
+        + '<div class="match-date-line">' + m.day + ' ' + m.date + '</div>'
+        + '<div class="team"><span class="flag">' + h.flag + '</span> ' + h.name + '</div>'
+        + vsContent
+        + '<div class="team"><span class="flag">' + a.flag + '</span> ' + a.name + '</div>'
+        + statusBadge
+        + '<span class="group-label">' + m.group + '组</span>'
+        + '<div class="match-code">#' + m.code + '</div>'
       + '</div>';
     }).join('');
     return '<div class="date-group-header">'
       + '<span>📅 ' + g.day + ' ' + g.date + '</span>'
       + '<span class="date-day">' + g.matches.length + '场</span>'
-    + '</div>' + rows;
+    + '</div>'
+    + '<div class="match-selector-grid">' + cards + '</div>';
   }).join('');
-
-  // 如果没有剩余比赛显示提示
-  if (showGroups.length === 0) {
+  if (groups.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-dim)">🏁 所有小组赛已结束</div>';
   }
 }
