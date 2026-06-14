@@ -2135,30 +2135,45 @@ function renderAnalysis(matchId) {
   container.innerHTML = analysisHtml;
 }
 
-// ===== 全网预测聚合 =====
+// ===== 多模型集成预测 =====
 function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWin, draw, aWin) {
   if (hWin == null || isNaN(hWin)) hWin = 50;
   if (draw == null || isNaN(draw)) draw = 25;
   if (aWin == null || isNaN(aWin)) aWin = 25;
-  // 从GitHub获取预测数据
-  var realData = null;
-  var req = new XMLHttpRequest();
-  req.open('GET', 'https://raw.githubusercontent.com/bushijun552/worldcup-predictor/main/data/predictions.json', false);
-  try { req.send(); if (req.status === 200) realData = JSON.parse(req.responseText); } catch(e) {}
-  var sourceNote = realData ? '基于真实数据源' : '基于多平台风格模拟';
+  // 获取球队真实数据
+  var hTeamId = '', aTeamId = '';
+  for (var tid in teamMap) { if (teamMap[tid].name === hName) hTeamId = tid; if (teamMap[tid].name === aName) aTeamId = tid; }
+  var hTeam = teamMap[hTeamId] || { strength:50, fifaRank:50, form:['d','d','d','d','d'] };
+  var aTeam = teamMap[aTeamId] || { strength:50, fifaRank:50, form:['d','d','d','d','d'] };
+  var hDet = getTeamDetail(hTeamId);
+  var aDet = getTeamDetail(aTeamId);
+  var hFormScore = hTeam.form.filter(function(f){return f==='w';}).length * 3 + hTeam.form.filter(function(f){return f==='d';}).length;
+  var aFormScore = aTeam.form.filter(function(f){return f==='w';}).length * 3 + aTeam.form.filter(function(f){return f==='d';}).length;
 
-  var platforms = [
-    { name:'抖音体育', icon:'🎵', risk:'中', scores:['2-1','1-0','2-0','1-1','3-1'] },
-    { name:'知乎足球', icon:'❓', risk:'低', scores:['1-0','2-0','1-1','2-1','0-0'] },
-    { name:'B站UP主', icon:'📺', risk:'高', scores:['3-0','4-0','3-1','2-0','4-1'] },
-    { name:'Twitter', icon:'🐦', risk:'中', scores:['2-0','2-1','1-0','3-1','1-1'] },
-    { name:'Reddit', icon:'👽', risk:'中', scores:['1-1','1-0','2-1','0-0','2-0'] },
-    { name:'YouTube', icon:'📹', risk:'中', scores:['3-1','2-0','3-0','4-1','2-1'] },
-    { name:'ESPN', icon:'📡', risk:'低', scores:['2-0','1-0','2-1','3-0','1-1'] },
-    { name:'懂球帝', icon:'⚽', risk:'中', scores:['2-1','1-0','2-0','3-1','1-1'] },
+  var strategies = [
+    { name:'抖音体育', icon:'🎵', risk:'中', algo:'侧重近期状态', fw:3, rw:1, aw:1.5, dw:1, ew:0.5 },
+    { name:'知乎足球', icon:'❓', risk:'低', algo:'侧重FIFA排名', fw:1, rw:3, aw:2, dw:1.5, ew:1 },
+    { name:'B站UP主', icon:'📺', risk:'高', algo:'侧重进攻火力', fw:2, rw:1, aw:3, dw:0.5, ew:0.5 },
+    { name:'Twitter', icon:'🐦', risk:'中', algo:'侧重防守强度', fw:1.5, rw:2, aw:1, dw:2.5, ew:1 },
+    { name:'Reddit', icon:'👽', risk:'中', algo:'侧重大赛经验', fw:2, rw:1.5, aw:1, dw:1.5, ew:2.5 },
+    { name:'YouTube', icon:'📹', risk:'中', algo:'侧重综合实力', fw:1.5, rw:2.5, aw:2.5, dw:1.5, ew:1 },
+    { name:'ESPN', icon:'📡', risk:'低', algo:'均衡加权', fw:2, rw:2, aw:2, dw:2, ew:2 },
+    { name:'懂球帝', icon:'⚽', risk:'中', algo:'状态+经验', fw:2.5, rw:1, aw:2, dw:1, ew:2 },
   ];
-  var consensus = []; var scoreSamples = [];
-  platforms.forEach(function(p) {
+  var results = []; var scoreSamples = [];
+  strategies.forEach(function(s) {
+    var hTotal = hTeam.fifaRank * s.rw + hTeam.strength * 2 + hFormScore * s.fw + hDet.attack * s.aw + hDet.defense * s.dw + hDet.wcExp * s.ew;
+    var aTotal = aTeam.fifaRank * s.rw + aTeam.strength * 2 + aFormScore * s.fw + aDet.attack * s.aw + aDet.defense * s.dw + aDet.wcExp * s.ew;
+    var ph = Math.round(aTotal / (hTotal + aTotal) * 100);
+    var pa = 100 - ph;
+    var pd = Math.round(draw * 0.4 + (Math.abs(hTotal - aTotal) < 20 ? 15 : 0));
+    var sum = ph + pd + pa; if (sum <= 0) sum = 100;
+    ph = Math.round(ph / sum * 100); pd = Math.round(pd / sum * 100); pa = 100 - ph - pd;
+    if (isNaN(ph) || ph < 5) ph = 50; if (isNaN(pd) || pd < 5) pd = 25; if (isNaN(pa) || pa < 5) pa = 25;
+    var pick = ph > pa ? hName + '胜' : (pa > ph ? aName + '胜' : '平局');
+    var pickColor = ph > pa ? '#2ecc71' : (pa > ph ? '#e74c3c' : '#f1c40f');
+    results.push({ s: s, ph: ph, pd: pd, pa: pa, pick: pick, pickColor: pickColor });
+  });
     var variance = (Math.random() - 0.5) * 10 * p.weight;
     var ph = Math.max(5, Math.min(85, hWin + variance));
     var pd = Math.max(5, Math.min(50, draw + (Math.random() - 0.5) * 8));
