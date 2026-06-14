@@ -1734,6 +1734,95 @@ function renderHHGG(matchId) {
     }
   }
 
+  // ===== 总进球2串1 =====
+  var goalCombos2 = [];
+  for (var i = 0; i < dateMatches.length; i++) {
+    for (var j = i + 1; j < dateMatches.length; j++) {
+      var gp1 = matchProbs[i], gp2 = matchProbs[j];
+      var tg1 = computeTotalGoals(gp1.home.id, gp1.away.id);
+      var tg2 = computeTotalGoals(gp2.home.id, gp2.away.id);
+      var best1 = tg1.over25 > tg1.under25 ? '大2.5' : '小2.5';
+      var bestPct1 = Math.max(tg1.over25, tg1.under25);
+      var best2 = tg2.over25 > tg2.under25 ? '大2.5' : '小2.5';
+      var bestPct2 = Math.max(tg2.over25, tg2.under25);
+      var comboProb = bestPct1 * bestPct2 / 100;
+      goalCombos2.push({ m1: gp1, m2: gp2, d1: best1, p1: bestPct1, d2: best2, p2: bestPct2, prob: comboProb, odds: (10000 / comboProb).toFixed(2) });
+    }
+  }
+  goalCombos2.sort(function(a,b) { return b.prob - a.prob; });
+  if (goalCombos2.length > 0) {
+    html += '<div style="margin-bottom:16px"><div style="font-weight:700;color:#3498db;margin-bottom:10px">🔢 总进球2串1（大小球）</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">';
+    var topG = goalCombos2.slice(0, Math.min(4, goalCombos2.length));
+    topG.forEach(function(c, idx) {
+      html += '<div style="padding:10px;border-radius:8px;background:' + (idx === 0 ? 'rgba(52,152,219,0.08)' : 'rgba(255,255,255,0.03)') + ';border:1px solid ' + (idx === 0 ? 'rgba(52,152,219,0.25)' : 'rgba(255,255,255,0.06)') + '">';
+      if (idx === 0) html += '<span style="font-size:0.65rem;color:#3498db;font-weight:700">🏆 最优</span>';
+      html += '<div style="font-size:0.8rem;margin-top:2px"><strong>' + c.m1.home.flag + ' ' + c.m1.home.name + '</strong> → <span style="color:#3498db">' + c.d1 + '</span> (' + c.p1 + '%)</div>';
+      html += '<div style="font-size:0.8rem;margin-top:2px"><strong>' + c.m2.home.flag + ' ' + c.m2.home.name + '</strong> → <span style="color:#3498db">' + c.d2 + '</span> (' + c.p2 + '%)</div>';
+      html += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.8rem">';
+      html += '<span style="color:var(--gold);font-weight:700">' + c.prob.toFixed(1) + '%</span><span style="color:var(--text-dim)">' + c.odds + '</span></div></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // ===== 混合SPF+比分2串1 =====
+  if (dateMatches.length >= 2) {
+    var mixCombos = [];
+    for (var i = 0; i < dateMatches.length; i++) {
+      for (var j = 0; j < dateMatches.length; j++) {
+        if (i === j) continue;
+        var sp = matchProbs[i], sc = matchProbs[j];
+        if (sc.bestScorePct > 1) {
+          var prob = sp.bestPct * sc.bestScorePct / 100;
+          mixCombos.push({ sp: sp, sc: sc, prob: prob, odds: (10000 / prob).toFixed(2) });
+        }
+      }
+    }
+    mixCombos.sort(function(a,b) { return b.prob - a.prob; });
+    if (mixCombos.length > 0) {
+      var topMix = mixCombos.slice(0, Math.min(3, mixCombos.length));
+      html += '<div style="margin-bottom:16px"><div style="font-weight:700;color:#9b59b6;margin-bottom:10px">🔀 混合串（胜平负+比分）</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">';
+      topMix.forEach(function(c, idx) {
+        html += '<div style="padding:10px;border-radius:8px;background:' + (idx === 0 ? 'rgba(155,89,182,0.06)' : 'rgba(255,255,255,0.03)') + ';border:1px solid ' + (idx === 0 ? 'rgba(155,89,182,0.2)' : 'rgba(255,255,255,0.06)') + '">';
+        html += '<div style="font-size:0.75rem">⚽ <strong>' + c.sp.home.flag + ' ' + c.sp.home.name + '</strong> → <span style="color:#2ecc71">' + c.sp.bestLabel + '</span></div>';
+        html += '<div style="font-size:0.75rem;margin-top:2px">🎯 <strong>' + c.sc.home.flag + ' ' + c.sc.home.name + '</strong> → <span style="color:#e67e22">比分 ' + c.sc.bestScore + '</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.8rem">';
+        html += '<span style="color:var(--gold);font-weight:700">' + c.prob.toFixed(1) + '%</span><span style="color:var(--text-dim)">' + c.odds + '</span></div></div>';
+      });
+      html += '</div></div>';
+    }
+  }
+
+  // ===== 4串1（4场以上时） =====
+  if (dateMatches.length >= 4) {
+    var combos4 = [];
+    for (var i = 0; i < dateMatches.length; i++) {
+      for (var j = i + 1; j < dateMatches.length; j++) {
+        for (var k = j + 1; k < dateMatches.length; k++) {
+          for (var l = k + 1; l < dateMatches.length; l++) {
+            var m1 = matchProbs[i], m2 = matchProbs[j], m3 = matchProbs[k], m4 = matchProbs[l];
+            var prob = m1.bestPct * m2.bestPct * m3.bestPct * m4.bestPct / 1000000;
+            combos4.push({ m1: m1, m2: m2, m3: m3, m4: m4, prob: prob, odds: (1000000 / prob).toFixed(2) });
+          }
+        }
+      }
+    }
+    combos4.sort(function(a,b) { return b.prob - a.prob; });
+    if (combos4.length > 0) {
+      var top4 = combos4.slice(0, Math.min(2, combos4.length));
+      html += '<div style="margin-bottom:16px"><div style="font-weight:700;color:#e74c3c;margin-bottom:10px">🔥 4串1（' + totalMatches + '选4）</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px">';
+      top4.forEach(function(c) {
+        html += '<div style="padding:10px;border-radius:8px;background:rgba(231,76,60,0.04);border:1px solid rgba(231,76,60,0.15)">';
+        html += '<div style="font-size:0.75rem"><strong>' + c.m1.home.flag + ' ' + c.m1.home.name + '</strong> → ' + c.m1.bestLabel + '</div>';
+        html += '<div style="font-size:0.75rem"><strong>' + c.m2.home.flag + ' ' + c.m2.home.name + '</strong> → ' + c.m2.bestLabel + '</div>';
+        html += '<div style="font-size:0.75rem"><strong>' + c.m3.home.flag + ' ' + c.m3.home.name + '</strong> → ' + c.m3.bestLabel + '</div>';
+        html += '<div style="font-size:0.75rem"><strong>' + c.m4.home.flag + ' ' + c.m4.home.name + '</strong> → ' + c.m4.bestLabel + '</div>';
+        html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.8rem">';
+        html += '<span style="color:var(--gold);font-weight:700">' + c.prob.toFixed(1) + '%</span><span style="color:var(--text-dim)">赔率 ' + c.odds + '</span></div></div>';
+      });
+      html += '</div></div>';
+    }
+  }
+
   // 策略建议
   html += '<div style="padding:14px;background:linear-gradient(135deg,rgba(240,192,64,0.06),rgba(46,204,113,0.04));border-radius:12px;border:1px solid rgba(240,192,64,0.12)">';
   html += '<div style="font-weight:700;color:var(--gold);margin-bottom:6px">🎯 混合过关策略建议</div>';
