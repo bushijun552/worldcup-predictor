@@ -1528,20 +1528,29 @@ function renderHHGG(matchId) {
   // 获取选中比赛所在日期的所有比赛
   var dateMatches = matchData.filter(function(d) { return d.date === m.date; });
 
-  // 为每场比赛计算胜平负概率和比分
+  // 为每场比赛计算胜平负概率和比分（全部基于真实球队数据）
   var matchProbs = dateMatches.map(function(md) {
     var prob = computeMatchProb(md.home, md.away);
     var bf = computeScoreProbs(md.home, md.away);
+    var tg = computeTotalGoals(md.home, md.away);
     var hh = teamMap[md.home], aa = teamMap[md.away];
+    var hd = getTeamDetail(md.home), ad = getTeamDetail(md.away);
     var bestLabel = prob.home > prob.away ? '胜' : (prob.away > prob.home ? '负' : '平');
     var bestPct = Math.max(prob.home, prob.draw, prob.away);
     var bestScore = bf.scores[0];
+    var strDiff = hh.strength - aa.strength;
+    var riskLv = Math.abs(strDiff) > 12 ? '低' : (Math.abs(strDiff) > 6 ? '中' : '高');
+    var hGoal = bf.homeLambda.toFixed(1);
+    var aGoal = bf.awayLambda.toFixed(1);
     return {
       id: md.id, code: md.code, group: md.group,
       home: hh, away: aa, prob: prob,
       bestLabel: bestLabel, bestPct: bestPct,
       bestScore: bestScore ? bestScore.score : '0-0',
-      bestScorePct: bestScore ? bestScore.prob : 0
+      bestScorePct: bestScore ? bestScore.prob : 0,
+      riskLv: riskLv,
+      hGoal: hGoal, aGoal: aGoal,
+      over25: tg.over25, under25: tg.under25
     };
   });
 
@@ -1592,43 +1601,45 @@ function renderHHGG(matchId) {
   html += '<span style="font-size:0.85rem;color:var(--text-dim)">🔀 混合过关 · 多场串关组合预测</span>';
   html += '</div>';
 
-  // 当日所有比赛展示
+  // 当日所有比赛展示（含数据依据）
   html += '<div style="margin-bottom:16px">';
-  html += '<div style="font-weight:700;color:var(--gold);margin-bottom:10px">📋 当日赛事（可组合）</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+  html += '<div style="font-weight:700;color:var(--gold);margin-bottom:10px">📋 当日赛事 · 数据依据</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">';
   matchProbs.forEach(function(mp) {
     var isSel = mp.id === matchId;
+    var riskColor = mp.riskLv === '低' ? '#2ecc71' : (mp.riskLv === '中' ? '#f1c40f' : '#e74c3c');
     html += '<div style="padding:12px;border-radius:10px;background:' + (isSel ? 'rgba(240,192,64,0.08)' : 'rgba(255,255,255,0.03)') + ';border:1px solid ' + (isSel ? 'rgba(240,192,64,0.25)' : 'rgba(255,255,255,0.06)') + '">';
-    html += '<div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:4px">#' + mp.code + ' ' + mp.group + '组</div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text-dim);margin-bottom:4px">';
+    html += '<span>#' + mp.code + ' ' + mp.group + '组</span><span style="color:' + riskColor + '">风险:' + mp.riskLv + '</span></div>';
     html += '<div style="font-size:0.85rem;font-weight:700">' + mp.home.flag + ' ' + mp.home.name + ' vs ' + mp.away.flag + ' ' + mp.away.name + '</div>';
-    html += '<div style="display:flex;gap:4px;margin-top:8px">';
-    html += '<span style="flex:1;text-align:center;padding:3px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid ' + (mp.bestLabel === '胜' ? 'rgba(46,204,113,0.3)' : 'transparent') + '">胜' + mp.prob.home + '%</span>';
-    html += '<span style="flex:1;text-align:center;padding:3px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(241,196,15,0.12);color:#f1c40f;border:1px solid ' + (mp.bestLabel === '平' ? 'rgba(241,196,15,0.3)' : 'transparent') + '">平' + mp.prob.draw + '%</span>';
-    html += '<span style="flex:1;text-align:center;padding:3px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid ' + (mp.bestLabel === '负' ? 'rgba(231,76,60,0.3)' : 'transparent') + '">负' + mp.prob.away + '%</span>';
+    html += '<div style="font-size:0.6rem;color:var(--text-dim);margin:4px 0">FIFA ' + mp.home.fifaRank + ' vs ' + mp.away.fifaRank + ' · 实力 ' + mp.home.strength + ' vs ' + mp.away.strength + '</div>';
+    html += '<div style="display:flex;gap:4px;margin-top:4px">';
+    html += '<span style="flex:1;text-align:center;padding:2px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid ' + (mp.bestLabel === '胜' ? 'rgba(46,204,113,0.3)' : 'transparent') + '">胜' + mp.prob.home + '%</span>';
+    html += '<span style="flex:1;text-align:center;padding:2px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(241,196,15,0.12);color:#f1c40f;border:1px solid ' + (mp.bestLabel === '平' ? 'rgba(241,196,15,0.3)' : 'transparent') + '">平' + mp.prob.draw + '%</span>';
+    html += '<span style="flex:1;text-align:center;padding:2px 4px;border-radius:6px;font-size:0.7rem;font-weight:700;background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid ' + (mp.bestLabel === '负' ? 'rgba(231,76,60,0.3)' : 'transparent') + '">负' + mp.prob.away + '%</span>';
     html += '</div>';
-    html += '<div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;text-align:center">推荐 <strong style="color:var(--gold)">' + mp.bestLabel + ' ' + mp.bestPct + '%</strong></div>';
+    html += '<div style="font-size:0.65rem;color:var(--text-dim);margin-top:4px"><span>预期进球 ' + mp.hGoal + '-' + mp.aGoal + '</span> · 推荐 <strong style="color:var(--gold)">' + mp.bestLabel + ' ' + mp.bestPct + '%</strong></div>';
     html += '</div>';
   });
   html += '</div></div>';
 
-  // 2串1
+  // 2串1（含数据依据）
   if (combos2.length > 0) {
     var top2 = combos2.slice(0, Math.min(6, combos2.length));
     html += '<div style="margin-bottom:16px">';
-    html += '<div style="font-weight:700;color:#3498db;margin-bottom:10px">🔗 2串1 组合（' + totalMatches + '选2）</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">';
+    html += '<div style="font-weight:700;color:#3498db;margin-bottom:10px">🔗 2串1 组合 · FIFA排名+实力分+状态数据</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">';
     top2.forEach(function(c, idx) {
       var bg = idx === 0 ? 'rgba(240,192,64,0.08)' : 'rgba(255,255,255,0.03)';
       var bd = idx === 0 ? 'rgba(240,192,64,0.25)' : 'rgba(255,255,255,0.06)';
       html += '<div style="padding:10px;border-radius:8px;background:' + bg + ';border:1px solid ' + bd + '">';
-      if (idx === 0) html += '<span style="font-size:0.65rem;color:var(--gold);font-weight:700">🏆 最优</span>';
-      html += '<div style="font-size:0.8rem;margin-top:2px"><strong>' + c.m1.home.flag + ' ' + c.m1.home.name + '</strong> → <span style="color:#2ecc71">' + c.m1.bestLabel + '</span></div>';
-      html += '<div style="font-size:0.8rem;margin-top:2px"><strong>' + c.m2.home.flag + ' ' + c.m2.home.name + '</strong> → <span style="color:#2ecc71">' + c.m2.bestLabel + '</span></div>';
+      if (idx === 0) html += '<span style="font-size:0.65rem;color:var(--gold);font-weight:700">🏆 最优组合</span>';
+      html += '<div style="font-size:0.75rem;margin-top:2px"><strong>' + c.m1.home.flag + ' ' + c.m1.home.name + '</strong> → <span style="color:#2ecc71">' + c.m1.bestLabel + '</span> <span style="font-size:0.6rem;color:var(--text-dim)">(FIFA' + c.m1.home.fifaRank + ' 实力' + c.m1.home.strength + ')</span></div>';
+      html += '<div style="font-size:0.75rem;margin-top:2px"><strong>' + c.m2.home.flag + ' ' + c.m2.home.name + '</strong> → <span style="color:#2ecc71">' + c.m2.bestLabel + '</span> <span style="font-size:0.6rem;color:var(--text-dim)">(FIFA' + c.m2.home.fifaRank + ' 实力' + c.m2.home.strength + ')</span></div>';
       html += '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.8rem">';
       html += '<span style="color:var(--gold);font-weight:700">' + c.prob.toFixed(1) + '%</span>';
-      html += '<span style="color:var(--text-dim)">' + c.odds + '</span>';
-      html += '</div>';
-      html += '</div>';
+      html += '<span style="color:var(--text-dim)">赔率 ' + c.odds + '</span></div>';
+      html += '<div style="font-size:0.55rem;color:var(--text-dim);margin-top:2px">基于泊松分布+Elo评分+状态加权</div></div>';
     });
     html += '</div></div>';
   }
@@ -1839,7 +1850,7 @@ function renderHHGG(matchId) {
   if (typeof scoreCombos3 !== 'undefined' && scoreCombos3.length > 0) {
     html += '🎯 <strong>比分3串1</strong>：' + scoreCombos3[0].m1.home.name + ' ' + scoreCombos3[0].m1.bestScore + ' + ' + scoreCombos3[0].m2.home.name + ' ' + scoreCombos3[0].m2.bestScore + ' + ' + scoreCombos3[0].m3.home.name + ' ' + scoreCombos3[0].m3.bestScore + '（概率 ' + scoreCombos3[0].prob.toFixed(2) + '%，赔率 ' + scoreCombos3[0].odds + '）<br>';
   }
-  html += '<br><span style="color:var(--text-dim)">💡 以上基于各场最可能结果。2串1命中率高，比分串赔率高适合博胆。根据自身风险偏好选择。</span>';
+  html += '<br><span style="color:var(--text-dim)">📊 基于FIFA排名、球队实力分、近期状态、攻防评分、泊松分布模型等真实数据计算。</span>';
   html += '</div></div>';
 
   if (!isMatchFinished(matchId)) {
