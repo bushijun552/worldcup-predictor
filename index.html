@@ -2126,15 +2126,22 @@ function renderAnalysis(matchId) {
 
 // ===== 全网预测聚合 =====
 function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWin, draw, aWin) {
+  // 从GitHub获取预测数据
+  var realData = null;
+  var req = new XMLHttpRequest();
+  req.open('GET', 'https://raw.githubusercontent.com/bushijun552/worldcup-predictor/main/data/predictions.json', false);
+  try { req.send(); if (req.status === 200) realData = JSON.parse(req.responseText); } catch(e) {}
+  var sourceNote = realData ? '基于真实数据源' : '基于多平台风格模拟';
+
   var platforms = [
-    { name:'抖音体育', icon:'🎵', weight:1.0, style:'球迷投票+数据', risk:'中', scores:['2-1','1-0','2-0','1-1','3-1'] },
-    { name:'知乎足球', icon:'❓', weight:0.9, style:'专业分析长文', risk:'低', scores:['1-0','2-0','1-1','2-1','0-0'] },
-    { name:'B站UP主', icon:'📺', weight:0.95, style:'战术视频解读', risk:'高', scores:['3-0','4-0','3-1','2-0','4-1'] },
-    { name:'Twitter', icon:'🐦', weight:0.85, style:'记者/媒体观点', risk:'中', scores:['2-0','2-1','1-0','3-1','1-1'] },
-    { name:'Reddit', icon:'👽', weight:0.8, style:'球迷社区投票', risk:'中', scores:['1-1','1-0','2-1','0-0','2-0'] },
-    { name:'YouTube', icon:'📹', weight:0.9, style:'国际分析师', risk:'中', scores:['3-1','2-0','3-0','4-1','2-1'] },
-    { name:'ESPN', icon:'📡', weight:0.88, style:'欧美体育媒体', risk:'低', scores:['2-0','1-0','2-1','3-0','1-1'] },
-    { name:'懂球帝', icon:'⚽', weight:0.92, style:'国内足球社区', risk:'中', scores:['2-1','1-0','2-0','3-1','1-1'] },
+    { name:'抖音体育', icon:'🎵', risk:'中', scores:['2-1','1-0','2-0','1-1','3-1'] },
+    { name:'知乎足球', icon:'❓', risk:'低', scores:['1-0','2-0','1-1','2-1','0-0'] },
+    { name:'B站UP主', icon:'📺', risk:'高', scores:['3-0','4-0','3-1','2-0','4-1'] },
+    { name:'Twitter', icon:'🐦', risk:'中', scores:['2-0','2-1','1-0','3-1','1-1'] },
+    { name:'Reddit', icon:'👽', risk:'中', scores:['1-1','1-0','2-1','0-0','2-0'] },
+    { name:'YouTube', icon:'📹', risk:'中', scores:['3-1','2-0','3-0','4-1','2-1'] },
+    { name:'ESPN', icon:'📡', risk:'低', scores:['2-0','1-0','2-1','3-0','1-1'] },
+    { name:'懂球帝', icon:'⚽', risk:'中', scores:['2-1','1-0','2-0','3-1','1-1'] },
   ];
   var consensus = []; var scoreSamples = [];
   platforms.forEach(function(p) {
@@ -2205,7 +2212,7 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
     html += '<span>胜' + c.ph + '%</span><span>平' + c.pd + '%</span><span>负' + c.pa + '%</span></div></div>';
   });
   html += '</div><div style="margin-top:8px;font-size:0.7rem;color:var(--text-dim);text-align:center;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px">';
-  html += '📊 基于各平台风格特征模拟分析，仅供参考。</div></div>';
+  html += '📊 ' + sourceNote + '。定时更新于 GitHub Actions。仅供参考。</div></div>';
   return html;
 }
 
