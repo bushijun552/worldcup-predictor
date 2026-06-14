@@ -2221,22 +2221,22 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
   html += '<div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text-dim);margin-top:4px">';
   html += '<span>' + hFlag + ' ' + hName + ' 胜 ' + avgH + '%</span><span>平局 ' + avgD + '%</span><span>' + aFlag + ' ' + aName + ' 胜 ' + avgA + '%</span></div></div>';
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px">';
-  consensus.forEach(function(c) {
+  results.forEach(function(r) {
     html += '<div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
-    html += '<span style="font-size:0.8rem;font-weight:700">' + c.platform.icon + ' ' + c.platform.name + '</span>';
-    html += '<span style="font-size:0.55rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:1px 6px;border-radius:4px">' + c.platform.risk + '风险</span></div>';
+    html += '<span style="font-size:0.8rem;font-weight:700">' + r.s.icon + ' ' + r.s.name + '</span>';
+    html += '<span style="font-size:0.55rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:1px 6px;border-radius:4px">' + r.s.risk + '风险</span></div>';
     html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    html += '<span style="font-size:0.85rem;font-weight:700;color:' + c.pickColor + '">' + c.pick + '</span>';
-    html += '<span style="font-size:0.75rem;color:#e67e22;font-weight:600">比分 ' + c.score + '</span></div>';
-    html += '<div style="font-size:0.6rem;color:var(--text-dim);margin:3px 0">' + c.stars + ' ' + c.platform.style + '</div>';
+    html += '<span style="font-size:0.85rem;font-weight:700;color:' + r.pickColor + '">' + r.pick + '</span>';
+    html += '<span style="font-size:0.75rem;color:#e67e22;font-weight:600">比分 ' + r.score + '</span></div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-dim);margin:2px 0">' + r.stars + ' ' + r.s.algo + '</div>';
     html += '<div style="display:flex;height:4px;border-radius:2px;overflow:hidden">';
-    html += '<div style="width:' + c.ph + '%;background:#2ecc71"></div><div style="width:' + c.pd + '%;background:#f1c40f"></div><div style="width:' + c.pa + '%;background:#e74c3c"></div></div>';
+    html += '<div style="width:' + r.ph + '%;background:#2ecc71"></div><div style="width:' + r.pd + '%;background:#f1c40f"></div><div style="width:' + r.pa + '%;background:#e74c3c"></div></div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--text-dim);margin-top:1px">';
-    html += '<span>胜' + c.ph + '%</span><span>平' + c.pd + '%</span><span>负' + c.pa + '%</span></div></div>';
+    html += '<span>胜' + r.ph + '%</span><span>平' + r.pd + '%</span><span>负' + r.pa + '%</span></div></div>';
   });
-  html += '</div><div style="margin-top:8px;font-size:0.7rem;color:var(--text-dim);text-align:center;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px">';
-  html += '📊 ' + sourceNote + '。定时更新于 GitHub Actions。仅供参考。</div></div>';
+  html += '</div><div style="margin-top:8px;font-size:0.65rem;color:var(--text-dim);text-align:center;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px">';
+  html += '📊 8种加权策略集成，基于FIFA排名·实力分·攻防评分·近期状态·大赛经验等真实数据。</div></div>';
   return html;
 }
 
