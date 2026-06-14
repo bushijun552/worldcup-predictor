@@ -2126,6 +2126,9 @@ function renderAnalysis(matchId) {
 
 // ===== 全网预测聚合 =====
 function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWin, draw, aWin) {
+  if (hWin == null || isNaN(hWin)) hWin = 50;
+  if (draw == null || isNaN(draw)) draw = 25;
+  if (aWin == null || isNaN(aWin)) aWin = 25;
   // 从GitHub获取预测数据
   var realData = null;
   var req = new XMLHttpRequest();
@@ -2149,7 +2152,9 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
     var ph = Math.max(5, Math.min(85, hWin + variance));
     var pd = Math.max(5, Math.min(50, draw + (Math.random() - 0.5) * 8));
     var pa = Math.max(5, Math.min(85, aWin - variance));
-    var sum = ph + pd + pa; ph = Math.round(ph / sum * 100); pd = Math.round(pd / sum * 100); pa = 100 - ph - pd;
+    var sum = ph + pd + pa; if (sum <= 0) sum = 100;
+    ph = Math.round(ph / sum * 100); pd = Math.round(pd / sum * 100); pa = 100 - ph - pd;
+    if (isNaN(ph) || isNaN(pd)) { ph = 50; pd = 25; pa = 25; }
     var pick = ph > pa ? hName + '胜' : (pa > ph ? aName + '胜' : '平局');
     var pickColor = ph > pa ? '#2ecc71' : (pa > ph ? '#e74c3c' : '#f1c40f');
     var starCount = Math.max(ph, pa, pd) > 60 ? 4 : (Math.max(ph, pa, pd) > 45 ? 3 : 2);
