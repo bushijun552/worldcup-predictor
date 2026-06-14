@@ -2133,116 +2133,77 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
   if (hWin == null || isNaN(hWin)) hWin = 50;
   if (draw == null || isNaN(draw)) draw = 25;
   if (aWin == null || isNaN(aWin)) aWin = 25;
-  // 获取球队真实数据
   var hTeamId = '', aTeamId = '';
   for (var tid in teamMap) { if (teamMap[tid].name === hName) hTeamId = tid; if (teamMap[tid].name === aName) aTeamId = tid; }
   var hTeam = teamMap[hTeamId] || { strength:50, fifaRank:50, form:['d','d','d','d','d'] };
   var aTeam = teamMap[aTeamId] || { strength:50, fifaRank:50, form:['d','d','d','d','d'] };
   var hDet = getTeamDetail(hTeamId);
   var aDet = getTeamDetail(aTeamId);
-  var hFormScore = hTeam.form.filter(function(f){return f==='w';}).length * 3 + hTeam.form.filter(function(f){return f==='d';}).length;
-  var aFormScore = aTeam.form.filter(function(f){return f==='w';}).length * 3 + aTeam.form.filter(function(f){return f==='d';}).length;
-
-  var strategies = [
-    { name:'抖音体育', icon:'🎵', risk:'中', algo:'侧重近期状态', fw:3, rw:1, aw:1.5, dw:1, ew:0.5 },
-    { name:'知乎足球', icon:'❓', risk:'低', algo:'侧重FIFA排名', fw:1, rw:3, aw:2, dw:1.5, ew:1 },
-    { name:'B站UP主', icon:'📺', risk:'高', algo:'侧重进攻火力', fw:2, rw:1, aw:3, dw:0.5, ew:0.5 },
-    { name:'Twitter', icon:'🐦', risk:'中', algo:'侧重防守强度', fw:1.5, rw:2, aw:1, dw:2.5, ew:1 },
-    { name:'Reddit', icon:'👽', risk:'中', algo:'侧重大赛经验', fw:2, rw:1.5, aw:1, dw:1.5, ew:2.5 },
-    { name:'YouTube', icon:'📹', risk:'中', algo:'侧重综合实力', fw:1.5, rw:2.5, aw:2.5, dw:1.5, ew:1 },
-    { name:'ESPN', icon:'📡', risk:'低', algo:'均衡加权', fw:2, rw:2, aw:2, dw:2, ew:2 },
-    { name:'懂球帝', icon:'⚽', risk:'中', algo:'状态+经验', fw:2.5, rw:1, aw:2, dw:1, ew:2 },
+  var hFormScore = hTeam.form.filter(function(f){return f==='w';}).length*3 + hTeam.form.filter(function(f){return f==='d';}).length;
+  var aFormScore = aTeam.form.filter(function(f){return f==='w';}).length*3 + aTeam.form.filter(function(f){return f==='d';}).length;
+  var s = [
+    {n:'抖音体育',i:'🎵',r:'中',a:'侧重近期状态',fw:3,rw:1,aw:1.5,dw:1,ew:0.5},
+    {n:'知乎足球',i:'❓',r:'低',a:'侧重FIFA排名',fw:1,rw:3,aw:2,dw:1.5,ew:1},
+    {n:'B站UP主',i:'📺',r:'高',a:'侧重进攻火力',fw:2,rw:1,aw:3,dw:0.5,ew:0.5},
+    {n:'Twitter',i:'🐦',r:'中',a:'侧重防守强度',fw:1.5,rw:2,aw:1,dw:2.5,ew:1},
+    {n:'Reddit',i:'👽',r:'中',a:'侧重大赛经验',fw:2,rw:1.5,aw:1,dw:1.5,ew:2.5},
+    {n:'YouTube',i:'📹',r:'中',a:'侧重综合实力',fw:1.5,rw:2.5,aw:2.5,dw:1.5,ew:1},
+    {n:'ESPN',i:'📡',r:'低',a:'均衡加权',fw:2,rw:2,aw:2,dw:2,ew:2},
+    {n:'懂球帝',i:'⚽',r:'中',a:'状态+经验',fw:2.5,rw:1,aw:2,dw:1,ew:2},
   ];
-  var results = []; var scoreSamples = [];
-  strategies.forEach(function(s) {
-    var hTotal = hTeam.fifaRank * s.rw + hTeam.strength * 2 + hFormScore * s.fw + hDet.attack * s.aw + hDet.defense * s.dw + hDet.wcExp * s.ew;
-    var aTotal = aTeam.fifaRank * s.rw + aTeam.strength * 2 + aFormScore * s.fw + aDet.attack * s.aw + aDet.defense * s.dw + aDet.wcExp * s.ew;
-    var ph = Math.round(aTotal / (hTotal + aTotal) * 100);
-    var pa = 100 - ph;
-    var pd = Math.round(draw * 0.4 + (Math.abs(hTotal - aTotal) < 20 ? 15 : 0));
-    var sum = ph + pd + pa; if (sum <= 0) sum = 100;
-    ph = Math.round(ph / sum * 100); pd = Math.round(pd / sum * 100); pa = 100 - ph - pd;
-    if (isNaN(ph) || ph < 5) ph = 50; if (isNaN(pd) || pd < 5) pd = 25; if (isNaN(pa) || pa < 5) pa = 25;
-    var pick = ph > pa ? hName + '胜' : (pa > ph ? aName + '胜' : '平局');
-    var pickColor = ph > pa ? '#2ecc71' : (pa > ph ? '#e74c3c' : '#f1c40f');
-    results.push({ s: s, ph: ph, pd: pd, pa: pa, pick: pick, pickColor: pickColor });
+  var res = []; var scSamples = [];
+  s.forEach(function(st) {
+    var hT = hTeam.fifaRank*st.rw + hTeam.strength*2 + hFormScore*st.fw + hDet.attack*st.aw + hDet.defense*st.dw + hDet.wcExp*st.ew;
+    var aT = aTeam.fifaRank*st.rw + aTeam.strength*2 + aFormScore*st.fw + aDet.attack*st.aw + aDet.defense*st.dw + aDet.wcExp*st.ew;
+    var ph = Math.round(aT/(hT+aT)*100); var pa = 100-ph;
+    var pd = Math.round(draw*0.4 + (Math.abs(hT-aT)<20?15:0));
+    var su = ph+pd+pa; if (su<=0) su=100; ph=Math.round(ph/su*100); pd=Math.round(pd/su*100); pa=100-ph-pd;
+    if (isNaN(ph)||ph<5) ph=50; if (isNaN(pd)||pd<5) pd=25; if (isNaN(pa)||pa<5) pa=25;
+    var pk = ph>pa ? hName+'胜' : (pa>ph ? aName+'胜' : '平局');
+    var pc = ph>pa ? '#2ecc71' : (pa>ph ? '#e74c3c' : '#f1c40f');
+    var sts = ''; for (var si=0; si<(Math.max(ph,pa,pd)>60?4:Math.max(ph,pa,pd)>45?3:2); si++) sts+='⭐';
+    var gh = Math.max(0,Math.round(0.8+(ph/100)*2.2+(hDet.attack-5)*0.1));
+    var ga = Math.max(0,Math.round(0.5+(pa/100)*1.8+(aDet.attack-5)*0.1));
+    if (gh===0 && ga===0) gh=1;
+    scSamples.push({h:gh,a:ga}); res.push({s:st,ph:ph,pd:pd,pa:pa,pk:pk,pc:pc,sts:sts,sc:gh+'-'+ga});
   });
-    var variance = (Math.random() - 0.5) * 10 * p.weight;
-    var ph = Math.max(5, Math.min(85, hWin + variance));
-    var pd = Math.max(5, Math.min(50, draw + (Math.random() - 0.5) * 8));
-    var pa = Math.max(5, Math.min(85, aWin - variance));
-    var sum = ph + pd + pa; if (sum <= 0) sum = 100;
-    ph = Math.round(ph / sum * 100); pd = Math.round(pd / sum * 100); pa = 100 - ph - pd;
-    if (isNaN(ph) || isNaN(pd)) { ph = 50; pd = 25; pa = 25; }
-    var pick = ph > pa ? hName + '胜' : (pa > ph ? aName + '胜' : '平局');
-    var pickColor = ph > pa ? '#2ecc71' : (pa > ph ? '#e74c3c' : '#f1c40f');
-    var starCount = Math.max(ph, pa, pd) > 60 ? 4 : (Math.max(ph, pa, pd) > 45 ? 3 : 2);
-    var stars = ''; for (var si = 0; si < starCount; si++) stars += '⭐';
-    // 各平台特色比分池
-    var scorePool = p.scores;
-    var idx = Math.floor(Math.random() * scorePool.length);
-    var scoreStr = scorePool[idx];
-    var parts = scoreStr.split('-');
-    var gh = parseInt(parts[0]), ga = parseInt(parts[1]);
-    // 客队强则比分反转
-    if (pa > ph && gh > ga) { var tmp = gh; gh = ga; ga = tmp; scoreStr = gh + '-' + ga; }
-    // 大比分时调整
-    if (ph > 65 && gh < 2) { gh += 1; scoreStr = gh + '-' + ga; }
-    if (pa > 65 && ga < 1) { ga += 1; scoreStr = gh + '-' + ga; }
-    scoreSamples.push({ h: gh, a: ga });
-    var reasons = ['历史交锋','近期状态','赔率市场','阵容分析','战术克制','专家投票'];
-    var reason = reasons[Math.floor(Math.random() * reasons.length)];
-    consensus.push({ platform: p, ph: ph, pd: pd, pa: pa, pick: pick, pickColor: pickColor, stars: stars, score: scoreStr, reason: reason });
+  var aH=Math.round(res.reduce(function(x,r){return x+r.ph;},0)/res.length);
+  var aD=Math.round(res.reduce(function(x,r){return x+r.pd;},0)/res.length);
+  var aA=100-aH-aD; var aG=Math.round(scSamples.reduce(function(x,r){return x+r.h;},0)/scSamples.length);
+  var aGa=Math.round(scSamples.reduce(function(x,r){return x+r.a;},0)/scSamples.length);
+  var cnt={},ts='1-0',tc=0; scSamples.forEach(function(s){var k=s.h+'-'+s.a; cnt[k]=(cnt[k]||0)+1;});
+  for (var k in cnt) { if (cnt[k]>tc) { tc=cnt[k]; ts=k; } }
+  var hC=res.filter(function(r){return r.pk===hName+'胜';}).length;
+  var aC=res.filter(function(r){return r.pk===aName+'胜';}).length;
+  var dC=res.filter(function(r){return r.pk==='平局';}).length;
+  var h='<div class="analysis-section" style="margin-top:16px"><h3>🌐 多模型集成预测 <span style="font-size:0.65rem;color:var(--text-dim);font-weight:400">8种加权策略 · 全部基于球队真实数据</span></h3>';
+  h+='<div style="margin-top:10px;padding:14px;background:linear-gradient(135deg,rgba(240,192,64,0.06),rgba(240,192,64,0.02));border-radius:12px;border:1px solid rgba(240,192,64,0.12)">';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;text-align:center">';
+  h+='<div><div style="font-size:0.65rem;color:var(--text-dim)">集成共识</div><div style="font-size:1.2rem;font-weight:900;color:var(--gold)">'+(aH>aA?hName+'胜':aA>aH?aName+'胜':'平局')+'</div><div style="font-size:0.6rem;color:var(--text-dim)">'+hC+'/'+dC+'/'+aC+' 模型</div></div>';
+  h+='<div><div style="font-size:0.65rem;color:var(--text-dim)">共识比分</div><div style="font-size:1.2rem;font-weight:900;color:#e67e22">'+aG+'-'+aGa+'</div><div style="font-size:0.6rem;color:var(--text-dim)">主流 '+ts+'</div></div>';
+  h+='<div><div style="font-size:0.65rem;color:var(--text-dim)">主胜概率</div><div style="font-size:1.2rem;font-weight:900;color:#2ecc71">'+aH+'%</div><div style="font-size:0.6rem;color:var(--text-dim)">vs '+aA+'% 客胜</div></div>';
+  h+='<div><div style="font-size:0.65rem;color:var(--text-dim)">模型信心</div><div style="font-size:1rem;font-weight:900;color:var(--gold)">'+(Math.max(aH,aD,aA)>60?'⭐⭐⭐⭐':Math.max(aH,aD,aA)>45?'⭐⭐⭐':'⭐⭐')+'</div><div style="font-size:0.6rem;color:var(--text-dim)">'+Math.max(aH,aD,aA)+'%一致</div></div></div>';
+  h+='<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:8px">';
+  h+='<div style="width:'+aH+'%;background:linear-gradient(90deg,#27ae60,#2ecc71)"></div><div style="width:'+aD+'%;background:linear-gradient(90deg,#e67e22,#f1c40f)"></div><div style="width:'+aA+'%;background:linear-gradient(90deg,#c0392b,#e74c3c)"></div></div></div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:10px">';
+  res.forEach(function(r) {
+    h+='<div style="padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
+    h+='<span style="font-size:0.8rem;font-weight:700">'+r.s.i+' '+r.s.n+'</span>';
+    h+='<span style="font-size:0.5rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:4px">'+r.s.r+'风险</span></div>';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+    h+='<span style="font-size:0.85rem;font-weight:700;color:'+r.pc+'">'+r.pk+'</span>';
+    h+='<span style="font-size:0.75rem;color:#e67e22;font-weight:600">'+r.sc+'</span></div>';
+    h+='<div style="font-size:0.55rem;color:var(--text-dim);margin:2px 0">'+r.sts+' '+r.s.a+'</div>';
+    h+='<div style="display:flex;height:3px;border-radius:2px;overflow:hidden">';
+    h+='<div style="width:'+r.ph+'%;background:#2ecc71"></div><div style="width:'+r.pd+'%;background:#f1c40f"></div><div style="width:'+r.pa+'%;background:#e74c3c"></div></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-size:0.5rem;color:var(--text-dim);margin-top:1px">';
+    h+='<span>胜'+r.ph+'%</span><span>平'+r.pd+'%</span><span>负'+r.pa+'%</span></div></div>';
   });
-  var avgH = Math.round(consensus.reduce(function(s,c){return s+c.ph;},0) / consensus.length);
-  var avgD = Math.round(consensus.reduce(function(s,c){return s+c.pd;},0) / consensus.length);
-  var avgA = 100 - avgH - avgD;
-  var majority = avgH > avgA ? hName + '胜' : (avgA > avgH ? aName + '胜' : '平局');
-  var avgGh = Math.round(scoreSamples.reduce(function(s,c){return s+c.h;},0) / scoreSamples.length);
-  var avgGa = Math.round(scoreSamples.reduce(function(s,c){return s+c.a;},0) / scoreSamples.length);
-  var scoreCounts = {}; var topScore = '1-0'; var topCount = 0;
-  scoreSamples.forEach(function(s){ var k = s.h+'-'+s.a; scoreCounts[k] = (scoreCounts[k]||0) + 1; });
-  for (var k in scoreCounts) { if (scoreCounts[k] > topCount) { topCount = scoreCounts[k]; topScore = k; } }
-  var hCnt = consensus.filter(function(c){return c.pick===hName+'胜';}).length;
-  var aCnt = consensus.filter(function(c){return c.pick===aName+'胜';}).length;
-  var dCnt = consensus.filter(function(c){return c.pick==='平局';}).length;
-
-  var html = '<div class="analysis-section" style="margin-top:16px">';
-  html += '<h3>🌐 全网预测聚合 <span style="font-size:0.65rem;color:var(--text-dim);font-weight:400">8大平台 · 含比分预测</span></h3>';
-  html += '<div style="margin-top:10px;padding:16px;background:linear-gradient(135deg,rgba(240,192,64,0.06),rgba(240,192,64,0.02));border-radius:12px;border:1px solid rgba(240,192,64,0.12)">';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;text-align:center">';
-  html += '<div><div style="font-size:0.65rem;color:var(--text-dim)">共识方向</div><div style="font-size:1.3rem;font-weight:900;color:var(--gold)">' + majority + '</div><div style="font-size:0.65rem;color:var(--text-dim)">' + hCnt + '/' + dCnt + '/' + aCnt + ' 平台</div></div>';
-  html += '<div><div style="font-size:0.65rem;color:var(--text-dim)">共识比分</div><div style="font-size:1.3rem;font-weight:900;color:#e67e22">' + avgGh + '-' + avgGa + '</div><div style="font-size:0.65rem;color:var(--text-dim)">热推 ' + topScore + '</div></div>';
-  html += '<div><div style="font-size:0.65rem;color:var(--text-dim)">主胜概率</div><div style="font-size:1.3rem;font-weight:900;color:#2ecc71">' + avgH + '%</div><div style="font-size:0.65rem;color:var(--text-dim)">vs ' + avgA + '% 客胜</div></div>';
-  html += '<div><div style="font-size:0.65rem;color:var(--text-dim)">信心评级</div><div style="font-size:1.1rem;font-weight:900;color:var(--gold)">' + (Math.max(avgH,avgD,avgA)>60?'⭐⭐⭐⭐':Math.max(avgH,avgD,avgA)>45?'⭐⭐⭐':'⭐⭐') + '</div><div style="font-size:0.65rem;color:var(--text-dim)">' + Math.max(avgH,avgD,avgA) + '%一致</div></div>';
-  html += '</div>';
-  html += '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:10px">';
-  html += '<div style="width:' + avgH + '%;background:linear-gradient(90deg,#27ae60,#2ecc71)"></div><div style="width:' + avgD + '%;background:linear-gradient(90deg,#e67e22,#f1c40f)"></div><div style="width:' + avgA + '%;background:linear-gradient(90deg,#c0392b,#e74c3c)"></div></div>';
-  html += '<div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text-dim);margin-top:4px">';
-  html += '<span>' + hFlag + ' ' + hName + ' 胜 ' + avgH + '%</span><span>平局 ' + avgD + '%</span><span>' + aFlag + ' ' + aName + ' 胜 ' + avgA + '%</span></div></div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px">';
-  results.forEach(function(r) {
-    html += '<div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
-    html += '<span style="font-size:0.8rem;font-weight:700">' + r.s.icon + ' ' + r.s.name + '</span>';
-    html += '<span style="font-size:0.55rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:1px 6px;border-radius:4px">' + r.s.risk + '风险</span></div>';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    html += '<span style="font-size:0.85rem;font-weight:700;color:' + r.pickColor + '">' + r.pick + '</span>';
-    html += '<span style="font-size:0.75rem;color:#e67e22;font-weight:600">比分 ' + r.score + '</span></div>';
-    html += '<div style="font-size:0.6rem;color:var(--text-dim);margin:2px 0">' + r.stars + ' ' + r.s.algo + '</div>';
-    html += '<div style="display:flex;height:4px;border-radius:2px;overflow:hidden">';
-    html += '<div style="width:' + r.ph + '%;background:#2ecc71"></div><div style="width:' + r.pd + '%;background:#f1c40f"></div><div style="width:' + r.pa + '%;background:#e74c3c"></div></div>';
-    html += '<div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--text-dim);margin-top:1px">';
-    html += '<span>胜' + r.ph + '%</span><span>平' + r.pd + '%</span><span>负' + r.pa + '%</span></div></div>';
-  });
-  html += '</div><div style="margin-top:8px;font-size:0.65rem;color:var(--text-dim);text-align:center;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px">';
-  html += '📊 8种加权策略集成，基于FIFA排名·实力分·攻防评分·近期状态·大赛经验等真实数据。</div></div>';
-  return html;
-}
-
-// ========================================================================
-//   INIT
-// ========================================================================
+  h+='</div><div style="margin-top:8px;font-size:0.65rem;color:var(--text-dim);text-align:center;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px">';
+  h+='📊 8种加权策略集成，基于FIFA排名·实力分·攻防评分·近期状态·大赛经验等真实数据。</div></div>';
+  return h;
+}// ========================================================================
 
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
