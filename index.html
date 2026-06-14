@@ -2162,9 +2162,11 @@ function renderPlatformConsensus(hName, aName, hFlag, aFlag, hScore, aScore, hWi
     var pk = ph>pa ? hName+'胜' : (pa>ph ? aName+'胜' : '平局');
     var pc = ph>pa ? '#2ecc71' : (pa>ph ? '#e74c3c' : '#f1c40f');
     var sts = ''; for (var si=0; si<(Math.max(ph,pa,pd)>60?4:Math.max(ph,pa,pd)>45?3:2); si++) sts+='⭐';
-    var gh = Math.max(0,Math.round(0.8+(ph/100)*2.2+(hDet.attack-5)*0.1));
-    var ga = Math.max(0,Math.round(0.5+(pa/100)*1.8+(aDet.attack-5)*0.1));
+    var gh = Math.max(0,Math.round(0.6+(ph/100)*2.5+(hDet.attack-5)*0.15+(st.fw*0.05)));
+    var ga = Math.max(0,Math.round(0.3+(pa/100)*2.0+(aDet.attack-5)*0.1+(st.ew*0.03)));
     if (gh===0 && ga===0) gh=1;
+    if (st.r==='高' && Math.random()>0.5) gh+=1;
+    if (st.r==='低' && gh>1 && Math.random()>0.5) gh-=1;
     scSamples.push({h:gh,a:ga}); res.push({s:st,ph:ph,pd:pd,pa:pa,pk:pk,pc:pc,sts:sts,sc:gh+'-'+ga});
   });
   var aH=Math.round(res.reduce(function(x,r){return x+r.ph;},0)/res.length);
