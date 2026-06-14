@@ -1140,19 +1140,11 @@ function renderMatchSelector() {
   document.getElementById('statToday').textContent = todayMatches;
   document.getElementById('statUpcoming').textContent = matchData.length - allPlayed;
 
-  // 只显示今天及之后的比赛（隐藏已结束的6月12-13日）
-  var today = '2026-06-14';
+  // 显示所有比赛
   var allGroups = groupByDate(matchData);
-  var showGroups = allGroups.filter(function(g) { return g.date >= today; });
-  var hiddenCount = allGroups.length - showGroups.length;
+  var showGroups = allGroups;
 
   var chipsHtml = '';
-  if (hiddenCount > 0) {
-    chipsHtml = '<div class="date-group-header" style="margin-bottom:4px">'
-      + '<span>📅 赛程</span>'
-      + '<span class="date-day" style="cursor:pointer;opacity:0.7" onclick="showAllMatches()">显示已完赛(' + hiddenCount + '天) ›</span>'
-      + '</div>';
-  }
 
   container.innerHTML = chipsHtml + showGroups.map(function(g) {
     var rows = g.matches.map(function(m) {
