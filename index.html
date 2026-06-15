@@ -979,24 +979,31 @@ function computeScoreProbs(homeId, awayId) {
   const h = teamMap[homeId], a = teamMap[awayId];
   if (!h || !a) return { scores: [{score:'0-0',prob:100}], homeLambda:0.5, awayLambda:0.5 };
   var hd = getTeamDetail(homeId), ad = getTeamDetail(awayId);
-  var hAtt = hd.attack||6, aAtt = ad.attack||6;
-  var hDef = hd.defense||6, aDef = ad.defense||6;
-  var homeLambda = Math.max(0.3, (hAtt / aDef) * 2.0 * 0.85);
-  var awayLambda = Math.max(0.3, (aAtt / hDef) * 2.0 * 0.75);
-  homeLambda *= 1 + (h.strength - a.strength) / 200;
-  awayLambda *= 1 + (a.strength - h.strength) / 200;
+  var pi = playerImpact(homeId, awayId);
+  // 1. 攻防基础（真实预选赛数据）
+  var baseH = (hd.attack / Math.max(ad.defense,4)) * 2.0;
+  var baseA = (ad.attack / Math.max(hd.defense,4)) * 2.0;
+  // 2. FIFA排名差
+  var rd = (a.fifaRank - h.fifaRank) / 50;
+  baseH *= 1 + rd * 0.15; baseA *= 1 - rd * 0.15;
+  // 3. 近期状态
+  var hF = h.form.filter(function(f){return f==='w';}).length;
+  var aF = a.form.filter(function(f){return f==='w';}).length;
+  baseH *= 1 + (hF-aF)*0.04; baseA *= 1 + (aF-hF)*0.04;
+  // 4. 核心球员缺阵
+  baseH *= 1 + pi.homeAdj/30; baseA *= 1 + pi.awayAdj/30;
+  // 5. 大赛经验
+  baseH *= 1 + (hd.wcExp-ad.wcExp)*0.02; baseA *= 1 + (ad.wcExp-hd.wcExp)*0.02;
+  var homeLambda = Math.max(0.2,baseH);
+  var awayLambda = Math.max(0.2,baseA);
   const scores = {};
-  for (let i = 0; i <= 6; i++) {
-    for (let j = 0; j <= 6; j++) {
-      const prob = poisson(homeLambda, i) * poisson(awayLambda, j);
-      if (prob > 0.008) scores[`${i}-${j}`] = prob;
-    }
-  }
-  const total = Object.values(scores).reduce((a,b)=>a+b, 0);
-  const result = Object.entries(scores)
-    .map(([k,v]) => ({ score: k, prob: (v/total*100) }))
-    .sort((a,b) => b.prob - a.prob);
-  return { scores: result.slice(0, 12), homeLambda, awayLambda };
+  for (let i=0;i<=6;i++) { for (let j=0;j<=6;j++) {
+    const p = poisson(homeLambda,i) * poisson(awayLambda,j);
+    if (p > 0.006) scores[i+'-'+j] = p;
+  }}
+  const total = Object.values(scores).reduce((a,b)=>a+b,0);
+  const result = Object.entries(scores).map(([k,v]) => ({score:k,prob:v/total*100})).sort((a,b)=>b.prob-a.prob);
+  return { scores: result.slice(0,12), homeLambda, awayLambda };
 }
 
 function computeTotalGoals(homeId, awayId) {
