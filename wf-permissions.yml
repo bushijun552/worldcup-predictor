@@ -1,0 +1,161 @@
+name: 自动更新比赛结果
+
+on:
+  schedule:
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  update-results:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 搜索并更新比赛结果
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const https = require('https');
+
+          const htmlPath = path.join(process.cwd(), 'index.html');
+          let html = fs.readFileSync(htmlPath, 'utf8');
+
+          // 今天日期
+          const today = new Date();
+          const datestr = today.toISOString().slice(0,10);
+          const todayCN = datestr.replace(/-/g, '').slice(2);
+
+          // 已完成的比赛列表（从 matchData 中提取）
+          const matchPattern = /id:'([^']+)',\s*home:'([^']+)',\s*away:'([^']+)',\s*group:'([^']+)',\s*date:'([^']+)'/g;
+          const matchResults = {};
+          let m;
+
+          // 读取已有结果
+          const existingResultPattern = /'r\d_\d{2}':\s*\{ home:\d+, away:\d+, desc:'[^']+' \}/g;
+          let match;
+          while ((match = existingResultPattern.exec(html)) !== null) {
+            const parts = match[0].match(/'([^']+)':\s*\{ home:(\d+), away:(\d+), desc:'([^']+)' \}/);
+            if (parts) {
+              matchResults[parts[1]] = parts[4];
+            }
+          }
+
+          // 查找所有 matchData 中的比赛
+          const allMatches = [];
+          while ((m = matchPattern.exec(html)) !== null) {
+            allMatches.push({
+              id: m[1], home: m[2], away: m[3], group: m[4], date: m[5]
+            });
+          }
+
+          // 球队名映射（用于搜索）
+          const teamNames = {
+            mex:'墨西哥', kor:'韩国', cze:'捷克', rsa:'南非',
+            sui:'瑞士', can:'加拿大', bih:'波黑', qat:'卡塔尔',
+            bra:'巴西', mar:'摩洛哥', sco:'苏格兰', hai:'海地',
+            usa:'美国', tur:'土耳其', par:'巴拉圭', aus:'澳大利亚',
+            ger:'德国', cura:'库拉索', civ:'科特迪瓦', ecu:'厄瓜多尔',
+            ned:'荷兰', jpn:'日本', swe:'瑞典', tun:'突尼斯',
+            bel:'比利时', egy:'埃及', irn:'伊朗', nzl:'新西兰',
+            esp:'西班牙', uru:'乌拉圭', ksa:'沙特', cpv:'佛得角',
+            fra:'法国', sen:'塞内加尔', nor:'挪威', irq:'伊拉克',
+            arg:'阿根廷', aut:'奥地利', alg:'阿尔及利亚', jor:'约旦',
+            por:'葡萄牙', col:'哥伦比亚', cod:'刚果(金)', uzb:'乌兹别克',
+            eng:'英格兰', cro:'克罗地亚', gha:'加纳', pan:'巴拿马'
+          };
+
+          // 计算哪些比赛需要查结果（今天之前的比赛，且没有结果）
+          const pendingMatches = allMatches.filter(mm => {
+            return mm.date < datestr && !matchResults[mm.id];
+          });
+
+          if (pendingMatches.length === 0) {
+            console.log('没有需要更新的比赛');
+            process.exit(0);
+          }
+
+          console.log(`需要查询 ${pendingMatches.length} 场比赛的结果`);
+
+          // 搜索函数
+          function searchMatch(homeName, awayName, dateStr) {
+            return new Promise((resolve) => {
+              const query = encodeURIComponent(`${homeName} ${awayName} 世界杯 2026 比分 ${dateStr}`);
+              const url = `https://api.duckduckgo.com/?q=${query}&format=json&atb=v411-1`;
+
+              https.get(url, { timeout: 10000 }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  try {
+                    const json = JSON.parse(data);
+                    const text = json.AbstractText || json.Abstract || '';
+                    // 尝试匹配比分模式: 数字-数字 (如 2-1)
+                    const scoreMatch = text.match(/(\d+)\s*[-:]\s*(\d+)/);
+                    if (scoreMatch) {
+                      resolve({ home: parseInt(scoreMatch[1]), away: parseInt(scoreMatch[2]) });
+                    } else {
+                      resolve(null);
+                    }
+                  } catch(e) {
+                    resolve(null);
+                  }
+                });
+              }).on('error', () => resolve(null));
+            });
+          }
+
+          (async () => {
+            let updated = 0;
+            for (const pm of pendingMatches) {
+              const hName = teamNames[pm.home] || pm.home;
+              const aName = teamNames[pm.away] || pm.away;
+              console.log(`查询: ${hName} vs ${aName} (${pm.date})`);
+
+              // 多次尝试
+              let result = null;
+              for (let i = 0; i < 3 && !result; i++) {
+                await new Promise(r => setTimeout(r, 2000));
+                result = await searchMatch(hName, aName, pm.date);
+              }
+
+              if (result) {
+                const desc = `${result.home}-${result.away}`;
+                const newEntry = `  '${pm.id}': { home:${result.home}, away:${result.away}, desc:'${desc}' },`;
+
+                // 插入到 matchResults 对象中
+                const insertAfter = "const matchResults = {";
+                const insertPos = html.indexOf(insertAfter) + insertAfter.length;
+                html = html.slice(0, insertPos) + '\n' + newEntry + html.slice(insertPos);
+
+                console.log(`  → 结果: ${desc}`);
+                updated++;
+              } else {
+                console.log(`  → 未找到结果`);
+              }
+            }
+
+            if (updated > 0) {
+              fs.writeFileSync(htmlPath, html, 'utf8');
+              console.log(`✅ 更新了 ${updated} 场比赛结果`);
+            } else {
+              console.log('没有找到任何新结果');
+            }
+          })();
+          EOF
+
+      - name: 提交更新
+        run: |
+          git config user.name "auto-bot"
+          git config user.email "bot@worldcup-predictor"
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 自动更新比赛结果 $(date +'%Y-%m-%d %H:%M')"
+          git push
