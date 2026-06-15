@@ -977,28 +977,25 @@ function factorial(n) {
 
 function computeScoreProbs(homeId, awayId) {
   const h = teamMap[homeId], a = teamMap[awayId];
-  const strRatio = (h.strength + 10) / (a.strength + 10);
-  const avgGoals = 2.5;
-  const homeLambda = (avgGoals * strRatio) / (1 + strRatio) * 1.15;
-  const awayLambda = (avgGoals * 1) / (1 + strRatio) * 0.95;
-
+  if (!h || !a) return { scores: [{score:'0-0',prob:100}], homeLambda:0.5, awayLambda:0.5 };
+  var hd = getTeamDetail(homeId), ad = getTeamDetail(awayId);
+  var hAtt = hd.attack||6, aAtt = ad.attack||6;
+  var hDef = hd.defense||6, aDef = ad.defense||6;
+  var homeLambda = Math.max(0.3, (hAtt / aDef) * 2.0 * 0.85);
+  var awayLambda = Math.max(0.3, (aAtt / hDef) * 2.0 * 0.75);
+  homeLambda *= 1 + (h.strength - a.strength) / 200;
+  awayLambda *= 1 + (a.strength - h.strength) / 200;
   const scores = {};
-  const maxGoals = 6;
-  for (let i = 0; i <= maxGoals; i++) {
-    for (let j = 0; j <= maxGoals; j++) {
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 6; j++) {
       const prob = poisson(homeLambda, i) * poisson(awayLambda, j);
-      if (prob > 0.005) {
-        scores[`${i}-${j}`] = prob;
-      }
+      if (prob > 0.008) scores[`${i}-${j}`] = prob;
     }
   }
-
-  // Normalize
   const total = Object.values(scores).reduce((a,b)=>a+b, 0);
   const result = Object.entries(scores)
     .map(([k,v]) => ({ score: k, prob: (v/total*100) }))
     .sort((a,b) => b.prob - a.prob);
-
   return { scores: result.slice(0, 12), homeLambda, awayLambda };
 }
 
