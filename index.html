@@ -814,23 +814,17 @@ function renderFactorsAnalysis(matchId) {
   html += a.flag + ' ' + a.name + '：进攻 ' + ad.attack + '/10 · 防守 ' + ad.defense + '/10';
   html += '</div>';
 
-  // 战术风格
-  html += '<div style="padding:10px;background:rgba(155,89,182,0.05);border-radius:8px;font-size:0.8rem">';
-  html += '<strong style="color:#af7ac5">🎯 战术风格</strong><br>';
-  html += h.flag + ' ' + hd.style + ' vs ' + a.flag + ' ' + ad.style + '<br>';
-  html += '<span style="color:var(--text-dim)">' + (hd.style === ad.style ? '风格相近，比拼细节' : '风格迥异，看点十足') + '</span>';
-  html += '</div>';
-
-  // 教练经验
-  html += '<div style="padding:10px;background:rgba(243,156,18,0.05);border-radius:8px;font-size:0.8rem">';
-  html += '<strong style="color:#f1c40f">👨‍🏫 教练对比</strong><br>';
-  html += h.flag + ' ' + hd.coach + '（世界杯经验：' + hd.wcExp + '/10）<br>';
-  html += a.flag + ' ' + ad.coach + '（世界杯经验：' + ad.wcExp + '/10）';
-  html += '</div>';
-
-  // 综合评分
-  var totalH = h.strength * 0.4 + hd.attack * 3 + hd.defense * 2 + hd.wcExp * 0.8;
-  var totalA = a.strength * 0.4 + ad.attack * 3 + ad.defense * 2 + ad.wcExp * 0.8;
+  // 战术博弈（含相克分析）
+  var styleMap={'快速反击':{s:['传控压迫','高位压迫'],w:['铁桶阵','密集防守']},'传控压迫':{s:['密集防守','铁桶阵'],w:['快速反击','防守反击']},'防守反击':{s:['传控压迫','高位压迫'],w:['铁桶阵','密集防守']},'高位压迫':{s:['传控技术','技术配合'],w:['快速反击','防守反击']},'铁桶阵':{s:['快速反击','全攻全守'],w:['传控压迫']},'传控技术':{s:['身体素质型','长传冲吊'],w:['高位压迫','高压逼抢']},'技术配合':{s:['身体素质型','高空球'],w:['高位压迫','高压逼抢']},'全攻全守':{s:['防守反击','铁桶阵'],w:['快速反击','传控压迫']},'高压逼抢':{s:['传控技术','技术配合','反击'],w:['快速反击','防守反击']},'桑巴技术流':{s:['密集防守','铁桶阵'],w:['防守反击','高压逼抢']}};
+  var hS=hd.style,aS=ad.style,ta='',ts=0;
+  if (styleMap[hS]&&styleMap[hS].s.some(function(x){return x===aS})){ta=h.name+'的'+hS+'克制'+a.name+'的'+aS;ts=8;}
+  else if(styleMap[aS]&&styleMap[aS].s.some(function(x){return x===hS})){ta=a.name+'的'+aS+'克制'+h.name+'的'+hS;ts=-8;}
+  else{ta='风格互有长短';ts=0;}
+  html+='<div style="padding:10px;background:rgba(155,89,182,0.05);border-radius:8px;font-size:0.8rem"><strong style="color:#af7ac5">🎯 战术博弈</strong><br>'+h.flag+' '+hS+' vs '+a.flag+' '+aS+'<br><span style="color:var(--text-dim)">'+ta+'</span></div>';
+  var ce=hd.wcExp-ad.wcExp;
+  html+='<div style="padding:10px;background:rgba(243,156,18,0.05);border-radius:8px;font-size:0.8rem"><strong style="color:#f1c40f">🧠 教练斗法</strong><br>'+h.flag+' '+hd.coach+'（'+hd.wcExp+'/10）<br>'+a.flag+' '+ad.coach+'（'+ad.wcExp+'/10）<br><span style="color:var(--text-dim)">'+(ce>2?hd.coach+'经验明显占优':ce<-2?ad.coach+'经验占优':'经验相当')+'</span></div>';
+  var totalH = h.strength * 0.4 + hd.attack * 3 + hd.defense * 2 + hd.wcExp * 0.8 + Math.max(0,ts);
+  var totalA = a.strength * 0.4 + ad.attack * 3 + ad.defense * 2 + ad.wcExp * 0.8 + Math.max(0,-ts);
   var totalMax = Math.max(totalH, totalA);
   var hPct = Math.round(totalH / (totalH + totalA) * 100);
   var aPct = 100 - hPct;
@@ -929,10 +923,16 @@ function computeMatchProb(homeId, awayId, handicap = 0) {
   baseHome += formDiff;
   baseAway -= formDiff;
 
-  // 主力球员出场影响（核心缺阵可能降低-12%胜率）
+  // 主力球员出场影响
   var pi = playerImpact(homeId, awayId);
   baseHome += pi.homeAdj;
   baseAway += pi.awayAdj;
+  // 战术相克 + 教练经验影响
+  var hDet = getTeamDetail(homeId), aDet = getTeamDetail(awayId);
+  var sm={'快速反击':{s:['传控压迫','高位压迫']},'传控压迫':{s:['密集防守','铁桶阵']},'防守反击':{s:['传控压迫','高位压迫']},'高位压迫':{s:['传控技术','技术配合']},'传控技术':{s:['身体素质型','长传冲吊']},'技术配合':{s:['身体素质型','高空球']},'高压逼抢':{s:['传控技术','技术配合']},'桑巴技术流':{s:['密集防守','铁桶阵']}};
+  if(sm[hDet.style]&&sm[hDet.style].s.some(function(x){return x===aDet.style})) baseHome+=3;
+  if(sm[aDet.style]&&sm[aDet.style].s.some(function(x){return x===hDet.style})) baseAway+=3;
+  baseHome+=(hDet.wcExp-aDet.wcExp)*0.8; baseAway+=(aDet.wcExp-hDet.wcExp)*0.8;
 
   // Ensure positive
   baseHome = Math.max(15, baseHome);
