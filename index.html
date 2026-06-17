@@ -1004,7 +1004,19 @@ function computeScoreProbs(homeId, awayId) {
   baseH*=1+pi.homeAdj/35; baseA*=1+pi.awayAdj/35;
   // 5. 世界杯经验
   baseH*=1+(hd.wcExp-ad.wcExp)*0.015; baseA*=1+(ad.wcExp-hd.wcExp)*0.015;
-  // 6. 杯赛进球折扣（世界杯比联赛少约20%）
+  // 6. 密集赛程影响（高强度风格受影响更大）
+  var physStyles=['奔跑型','高压逼抢','边路突破','身体对抗','全攻全守'];
+  if(physStyles.indexOf(hd.style)>=0)baseH*=0.96;
+  if(physStyles.indexOf(ad.style)>=0)baseA*=0.96;
+  // 7. 上轮势头（近3场胜场加成）
+  var hF3=h.form.slice(-3).filter(function(f){return f==='w';}).length;
+  var aF3=a.form.slice(-3).filter(function(f){return f==='w';}).length;
+  baseH*=1+(hF3-1)*0.02; baseA*=1+(aF3-1)*0.02;
+  // 8. 定位球威胁（高空球/身体素质型球队）
+  var sp=['高空球','身体对抗','身体素质型','北欧冲击'];
+  if(sp.indexOf(hd.style)>=0)baseH*=1.04;
+  if(sp.indexOf(ad.style)>=0)baseA*=1.04;
+  // 9. 杯赛进球折扣
   baseH*=0.82; baseA*=0.82;
   var homeLambda=Math.max(0.15,Math.min(4.5,baseH));
   var awayLambda=Math.max(0.15,Math.min(3.5,baseA));
