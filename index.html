@@ -937,14 +937,28 @@ function computeMatchProb(homeId, awayId, handicap = 0) {
   if(sm[hDet.style]&&sm[hDet.style].s.some(function(x){return x===aDet.style})) baseHome+=3;
   if(sm[aDet.style]&&sm[aDet.style].s.some(function(x){return x===hDet.style})) baseAway+=3;
   baseHome+=(hDet.wcExp-aDet.wcExp)*0.8; baseAway+=(aDet.wcExp-hDet.wcExp)*0.8;
+  // 洲际对战+东道主+新人效应
+  var cm={mex:'北美',kor:'亚洲',cze:'欧洲',rsa:'非洲',sui:'欧洲',can:'北美',bih:'欧洲',qat:'亚洲',bra:'南美',mar:'非洲',sco:'欧洲',hai:'北美',usa:'北美',tur:'欧洲',par:'南美',aus:'亚洲',ger:'欧洲',cura:'北美',civ:'非洲',ecu:'南美',ned:'欧洲',jpn:'亚洲',swe:'欧洲',tun:'非洲',bel:'欧洲',egy:'非洲',irn:'亚洲',nzl:'大洋洲',esp:'欧洲',uru:'南美',ksa:'亚洲',cpv:'非洲',fra:'欧洲',sen:'非洲',nor:'欧洲',irq:'亚洲',arg:'南美',aut:'欧洲',alg:'非洲',jor:'亚洲',por:'欧洲',col:'南美',cod:'非洲',uzb:'亚洲',eng:'欧洲',cro:'欧洲',gha:'非洲',pan:'北美'};
+  var hC=cm[homeId]||'',aC=cm[awayId]||'';
+  if(hC==='欧洲'&&aC==='非洲')baseHome+=1.5;if(aC==='欧洲'&&hC==='非洲')baseAway+=1.5;
+  if(hC==='南美'&&aC==='亚洲')baseHome+=1.2;if(aC==='南美'&&hC==='亚洲')baseAway+=1.2;
+  if(['usa','can','mex'].indexOf(homeId)>=0)baseHome+=2;
+  if(['usa','can','mex'].indexOf(awayId)>=0)baseAway+=2;
+  if(hDet.wcExp<=2)baseHome*=0.98;if(aDet.wcExp<=2)baseAway*=0.98;
+  var hF3=h.form.slice(-3).filter(function(f){return f==='w';}).length;
+  var aF3=a.form.slice(-3).filter(function(f){return f==='w';}).length;
+  baseHome+=(hF3-1)*1.2; baseAway+=(aF3-1)*1.2;
 
   // Ensure positive
   baseHome = Math.max(15, baseHome);
   baseAway = Math.max(15, baseAway);
 
-  // Normalize to 100
-  const total = baseHome + baseAway + 15; // 15 base for draw
-  const drawPct = Math.max(15, Math.min(40, 15 + Math.abs(h.strength - a.strength) * 0.1));
+  // Normalize to 100（改进平局计算：实力接近+防守风格增加平局概率）
+  var drawBase = Math.abs(h.strength-a.strength)<5 ? 22 : (Math.abs(h.strength-a.strength)<10 ? 18 : 15);
+  var defS=['防守反击','铁桶阵','密集防守','铁血防守','防守坚韧'];
+  if(defS.indexOf(hDet.style)>=0||defS.indexOf(aDet.style)>=0)drawBase+=3;
+  const total = baseHome + baseAway + drawBase;
+  const drawPct = Math.min(32, drawBase);
 
   let homePct = Math.round((baseHome / total) * (100 - drawPct));
   let awayPct = Math.round((baseAway / total) * (100 - drawPct));
