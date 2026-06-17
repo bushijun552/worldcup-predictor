@@ -790,6 +790,16 @@ function playerImpact(homeId, awayId) {
   return { homeAdj: hAdj, awayAdj: aAdj, hStar: hd.star, aStar: ad.star, hSt: hd.starSt, aSt: ad.starSt, hInj: hd.inj||'', aInj: ad.inj||'' };
 }
 
+// === 公用工具函数 ===
+var _cm={mex:'北美',kor:'亚洲',cze:'欧洲',rsa:'非洲',sui:'欧洲',can:'北美',bih:'欧洲',qat:'亚洲',bra:'南美',mar:'非洲',sco:'欧洲',hai:'北美',usa:'北美',tur:'欧洲',par:'南美',aus:'亚洲',ger:'欧洲',cura:'北美',civ:'非洲',ecu:'南美',ned:'欧洲',jpn:'亚洲',swe:'欧洲',tun:'非洲',bel:'欧洲',egy:'非洲',irn:'亚洲',nzl:'大洋洲',esp:'欧洲',uru:'南美',ksa:'亚洲',cpv:'非洲',fra:'欧洲',sen:'非洲',nor:'欧洲',irq:'亚洲',arg:'南美',aut:'欧洲',alg:'非洲',jor:'亚洲',por:'欧洲',col:'南美',cod:'非洲',uzb:'亚洲',eng:'欧洲',cro:'欧洲',gha:'非洲',pan:'北美'};
+function getCont(t){return _cm[t]||'';}
+var _sc={'快速反击':['传控压迫','高位压迫'],'传控压迫':['密集防守','铁桶阵'],'防守反击':['传控压迫','高位压迫'],'高位压迫':['传控技术','技术配合'],'传控技术':['身体素质型','长传冲吊'],'技术配合':['身体素质型','高空球'],'高压逼抢':['传控技术','技术配合'],'桑巴技术流':['密集防守','铁桶阵']};
+function styleAdv(h,a){return _sc[h]&&_sc[h].indexOf(a)>=0;}
+function contBias(id1,id2){var c1=getCont(id1),c2=getCont(id2);if(c1==='欧洲'&&c2==='非洲')return 1.5;if(c2==='欧洲'&&c1==='非洲')return -1.5;if(c1==='南美'&&c2==='亚洲')return 1.2;if(c2==='南美'&&c1==='亚洲')return -1.2;return 0;}
+function momBonus(f){return (f.slice(-3).filter(function(x){return x==='w';}).length-1)*1.2;}
+function isHost(t){return['usa','can','mex'].indexOf(t)>=0;}
+function isNew(t){return (teamMap[t]?getTeamDetail(t).wcExp:99)<=2;}
+
 // 生成综合因素分析HTML
 function renderFactorsAnalysis(matchId) {
   var mt = getMatchTeams(matchId);
@@ -931,32 +941,28 @@ function computeMatchProb(homeId, awayId, handicap = 0) {
   var pi = playerImpact(homeId, awayId);
   baseHome += pi.homeAdj;
   baseAway += pi.awayAdj;
-  // 战术相克 + 教练经验影响
+  // 战术相克 + 教练经验影响（使用公用函数）
   var hDet = getTeamDetail(homeId), aDet = getTeamDetail(awayId);
-  var sm={'快速反击':{s:['传控压迫','高位压迫']},'传控压迫':{s:['密集防守','铁桶阵']},'防守反击':{s:['传控压迫','高位压迫']},'高位压迫':{s:['传控技术','技术配合']},'传控技术':{s:['身体素质型','长传冲吊']},'技术配合':{s:['身体素质型','高空球']},'高压逼抢':{s:['传控技术','技术配合']},'桑巴技术流':{s:['密集防守','铁桶阵']}};
-  if(sm[hDet.style]&&sm[hDet.style].s.some(function(x){return x===aDet.style})) baseHome+=3;
-  if(sm[aDet.style]&&sm[aDet.style].s.some(function(x){return x===hDet.style})) baseAway+=3;
+  if(styleAdv(hDet.style,aDet.style)) baseHome+=3;
+  if(styleAdv(aDet.style,hDet.style)) baseAway+=3;
   baseHome+=(hDet.wcExp-aDet.wcExp)*0.8; baseAway+=(aDet.wcExp-hDet.wcExp)*0.8;
-  // 洲际对战+东道主+新人效应
-  var cm={mex:'北美',kor:'亚洲',cze:'欧洲',rsa:'非洲',sui:'欧洲',can:'北美',bih:'欧洲',qat:'亚洲',bra:'南美',mar:'非洲',sco:'欧洲',hai:'北美',usa:'北美',tur:'欧洲',par:'南美',aus:'亚洲',ger:'欧洲',cura:'北美',civ:'非洲',ecu:'南美',ned:'欧洲',jpn:'亚洲',swe:'欧洲',tun:'非洲',bel:'欧洲',egy:'非洲',irn:'亚洲',nzl:'大洋洲',esp:'欧洲',uru:'南美',ksa:'亚洲',cpv:'非洲',fra:'欧洲',sen:'非洲',nor:'欧洲',irq:'亚洲',arg:'南美',aut:'欧洲',alg:'非洲',jor:'亚洲',por:'欧洲',col:'南美',cod:'非洲',uzb:'亚洲',eng:'欧洲',cro:'欧洲',gha:'非洲',pan:'北美'};
-  var hC=cm[homeId]||'',aC=cm[awayId]||'';
-  if(hC==='欧洲'&&aC==='非洲')baseHome+=1.5;if(aC==='欧洲'&&hC==='非洲')baseAway+=1.5;
-  if(hC==='南美'&&aC==='亚洲')baseHome+=1.2;if(aC==='南美'&&hC==='亚洲')baseAway+=1.2;
-  if(['usa','can','mex'].indexOf(homeId)>=0)baseHome+=2;
-  if(['usa','can','mex'].indexOf(awayId)>=0)baseAway+=2;
-  if(hDet.wcExp<=2)baseHome*=0.98;if(aDet.wcExp<=2)baseAway*=0.98;
-  var hF3=h.form.slice(-3).filter(function(f){return f==='w';}).length;
-  var aF3=a.form.slice(-3).filter(function(f){return f==='w';}).length;
-  baseHome+=(hF3-1)*1.2; baseAway+=(aF3-1)*1.2;
+  // 洲际对战+东道主+新人+势头（使用公用函数）
+  baseHome+=contBias(homeId,awayId); baseAway+=contBias(awayId,homeId);
+  if(isHost(homeId))baseHome+=2;if(isHost(awayId))baseAway+=2;
+  if(isNew(homeId))baseHome*=0.98;if(isNew(awayId))baseAway*=0.98;
+  baseHome+=momBonus(h.form); baseAway+=momBonus(a.form);
 
   // Ensure positive
   baseHome = Math.max(15, baseHome);
   baseAway = Math.max(15, baseAway);
 
-  // Normalize to 100（改进平局计算：实力接近+防守风格增加平局概率）
-  var drawBase = Math.abs(h.strength-a.strength)<5 ? 22 : (Math.abs(h.strength-a.strength)<10 ? 18 : 15);
+  // Normalize to 100
+  var drawBase=Math.abs(h.strength-a.strength)<5?22:(Math.abs(h.strength-a.strength)<10?18:15);
   var defS=['防守反击','铁桶阵','密集防守','铁血防守','防守坚韧'];
-  if(defS.indexOf(hDet.style)>=0||defS.indexOf(aDet.style)>=0)drawBase+=3;
+  var attS=['桑巴技术流','全攻全守','快速反击','高位压迫','高压逼抢','边路突破'];
+  if(defS.indexOf(hDet.style)>=0&&defS.indexOf(aDet.style)>=0)drawBase+=5;
+  else if(defS.indexOf(hDet.style)>=0||defS.indexOf(aDet.style)>=0)drawBase+=2;
+  else if(attS.indexOf(hDet.style)>=0&&attS.indexOf(aDet.style)>=0)drawBase-=3;
   const total = baseHome + baseAway + drawBase;
   const drawPct = Math.min(32, drawBase);
 
@@ -1030,17 +1036,12 @@ function computeScoreProbs(homeId, awayId) {
   var sp=['高空球','身体对抗','身体素质型','北欧冲击'];
   if(sp.indexOf(hd.style)>=0)baseH*=1.04;
   if(sp.indexOf(ad.style)>=0)baseA*=1.04;
-  // 9. 洲际对战历史偏向
-  var cm={mex:'北美',kor:'亚洲',cze:'欧洲',rsa:'非洲',sui:'欧洲',can:'北美',bih:'欧洲',qat:'亚洲',bra:'南美',mar:'非洲',sco:'欧洲',hai:'北美',usa:'北美',tur:'欧洲',par:'南美',aus:'亚洲',ger:'欧洲',cura:'北美',civ:'非洲',ecu:'南美',ned:'欧洲',jpn:'亚洲',swe:'欧洲',tun:'非洲',bel:'欧洲',egy:'非洲',irn:'亚洲',nzl:'大洋洲',esp:'欧洲',uru:'南美',ksa:'亚洲',cpv:'非洲',fra:'欧洲',sen:'非洲',nor:'欧洲',irq:'亚洲',arg:'南美',aut:'欧洲',alg:'非洲',jor:'亚洲',por:'欧洲',col:'南美',cod:'非洲',uzb:'亚洲',eng:'欧洲',cro:'欧洲',gha:'非洲',pan:'北美'};
-  var hC=cm[homeId]||'',aC=cm[awayId]||'';
-  if(hC==='欧洲'&&aC==='非洲')baseH*=1.05;if(aC==='欧洲'&&hC==='非洲')baseA*=1.05;
-  if(hC==='南美'&&aC==='亚洲')baseH*=1.04;if(aC==='南美'&&hC==='亚洲')baseA*=1.04;
-  if(hC==='南美'&&aC==='北美')baseH*=1.03;if(aC==='南美'&&hC==='北美')baseA*=1.03;
-  // 10. 东道主加成
-  if(['usa','can','mex'].indexOf(homeId)>=0)baseH*=1.06;
-  if(['usa','can','mex'].indexOf(awayId)>=0)baseA*=1.06;
-  // 11. 世界杯新人效应（首次参赛队伍偏保守）
-  if(hd.wcExp<=2)baseH*=0.97;if(ad.wcExp<=2)baseA*=0.97;
+  // 9. 洲际对战（公用函数）
+  var cb=contBias(homeId,awayId);if(cb>0)baseH*=1.04;if(cb<0)baseA*=1.04;
+  // 10. 东道主（公用函数）
+  if(isHost(homeId))baseH*=1.06;if(isHost(awayId))baseA*=1.06;
+  // 11. 新人效应（公用函数）
+  if(isNew(homeId))baseH*=0.97;if(isNew(awayId))baseA*=0.97;
   // 12. 杯赛进球折扣
   baseH*=0.82; baseA*=0.82;
   var homeLambda=Math.max(0.15,Math.min(4.5,baseH));
