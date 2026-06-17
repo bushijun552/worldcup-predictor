@@ -1045,10 +1045,6 @@ function computeScoreProbs(homeId, awayId) {
   baseH*=0.82; baseA*=0.82;
   var homeLambda=Math.max(0.15,Math.min(4.5,baseH));
   var awayLambda=Math.max(0.15,Math.min(3.5,baseA));
-  // 7. 随机波动因子（足球天然高方差）
-  homeLambda+=(Math.random()-0.5)*0.4; awayLambda+=(Math.random()-0.5)*0.3;
-  homeLambda=Math.max(0.15,Math.min(4.5,homeLambda));
-  awayLambda=Math.max(0.15,Math.min(3.5,awayLambda));
   const scores={};
   for (let i=0;i<=6;i++){for(let j=0;j<=6;j++){
     const p=poisson(homeLambda,i)*poisson(awayLambda,j);
