@@ -869,7 +869,7 @@ function isMatchFinished(matchId) {
   if (matchResults[matchId]) return true;
   var m = matchData.find(function(x) { return x.id === matchId; });
   if (!m) return false;
-  return m.date < '2026-06-14'; // 今天之前的比赛自动标记为已完赛
+  return m.date < new Date().toISOString().slice(0,10);
 }
 
 function getMatchResult(matchId) {
