@@ -1016,7 +1016,18 @@ function computeScoreProbs(homeId, awayId) {
   var sp=['高空球','身体对抗','身体素质型','北欧冲击'];
   if(sp.indexOf(hd.style)>=0)baseH*=1.04;
   if(sp.indexOf(ad.style)>=0)baseA*=1.04;
-  // 9. 杯赛进球折扣
+  // 9. 洲际对战历史偏向
+  var cm={mex:'北美',kor:'亚洲',cze:'欧洲',rsa:'非洲',sui:'欧洲',can:'北美',bih:'欧洲',qat:'亚洲',bra:'南美',mar:'非洲',sco:'欧洲',hai:'北美',usa:'北美',tur:'欧洲',par:'南美',aus:'亚洲',ger:'欧洲',cura:'北美',civ:'非洲',ecu:'南美',ned:'欧洲',jpn:'亚洲',swe:'欧洲',tun:'非洲',bel:'欧洲',egy:'非洲',irn:'亚洲',nzl:'大洋洲',esp:'欧洲',uru:'南美',ksa:'亚洲',cpv:'非洲',fra:'欧洲',sen:'非洲',nor:'欧洲',irq:'亚洲',arg:'南美',aut:'欧洲',alg:'非洲',jor:'亚洲',por:'欧洲',col:'南美',cod:'非洲',uzb:'亚洲',eng:'欧洲',cro:'欧洲',gha:'非洲',pan:'北美'};
+  var hC=cm[homeId]||'',aC=cm[awayId]||'';
+  if(hC==='欧洲'&&aC==='非洲')baseH*=1.05;if(aC==='欧洲'&&hC==='非洲')baseA*=1.05;
+  if(hC==='南美'&&aC==='亚洲')baseH*=1.04;if(aC==='南美'&&hC==='亚洲')baseA*=1.04;
+  if(hC==='南美'&&aC==='北美')baseH*=1.03;if(aC==='南美'&&hC==='北美')baseA*=1.03;
+  // 10. 东道主加成
+  if(['usa','can','mex'].indexOf(homeId)>=0)baseH*=1.06;
+  if(['usa','can','mex'].indexOf(awayId)>=0)baseA*=1.06;
+  // 11. 世界杯新人效应（首次参赛队伍偏保守）
+  if(hd.wcExp<=2)baseH*=0.97;if(ad.wcExp<=2)baseA*=0.97;
+  // 12. 杯赛进球折扣
   baseH*=0.82; baseA*=0.82;
   var homeLambda=Math.max(0.15,Math.min(4.5,baseH));
   var awayLambda=Math.max(0.15,Math.min(3.5,baseA));
